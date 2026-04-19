@@ -460,7 +460,7 @@ The app **automatically reads the results aloud** in your selected language.
 | **Amritanshu Shaw** | Full Stack Developer — Architecture, Backend, API, Deployment | [@amritanshushaw-cpu](https://github.com/amritanshushaw-cpu) |
 | **Shrinivas Ghosh** | AI & Integration — Groq Pipeline, Bhashini API, Language Support | [@devnivas](https://github.com/devnivas) |
 | **Saptak Sarathi Chakraborty** | Product & Design — UX, Accessibility, User Research | [@saptakgg](https://github.com/saptakgg) |
-| **Ritam Karmakar** | Full Stack Developer — Frontend,   | [@ritam07karmakar-prog](https://github.com/ritam07karmakar-prog) |
+| **Ritam Karmakar** | Full Stack Developer — Frontend, Backend | [@ritam07karmakar-prog](https://github.com/ritam07karmakar-prog) |
 
 ---
 
