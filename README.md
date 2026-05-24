@@ -115,9 +115,9 @@ Every year, thousands of patients in India take wrong medicine doses or misunder
 
 ### Medicine Label Scan
 ```
-User taps "Scan Medicine Label" 
-    → Camera → Capture → POST /api/scan
-    → Groq Vision (label prompt) → Translate → Results
+User taps "Scan Prescription" 
+    → Camera → Capture → POST /api/scan-prescription
+    → Groq Vision (prescription prompt) → Translate → Results
     → Auto TTS Readout
 ```
 
@@ -316,7 +316,6 @@ Scroll the language bar at the bottom of the home screen. Tap your preferred lan
 
 ### Step 3 — Choose Scan Type
 Two buttons on the home screen:
-- **💊 Scan Medicine Label** — for medicine bottles, strips, syrups, etc.
 - **📋 Scan Prescription** — for handwritten/printed prescriptions from doctors
 
 ### Step 4 — Scan
@@ -331,7 +330,6 @@ Tap your chosen option. Hold the item inside the gold frame. Tap the shutter but
 - ⚠️ **Warnings**
 
 **Prescription Results:**
-- 👤 **Patient Info** (name, age)
 - 🩺 **Diagnosis** in simple words
 - 💊 **Prescribed Medicines** (name, dosage, frequency, duration per medicine)
 - 👨‍⚕️ **Doctor Name**
