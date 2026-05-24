@@ -4,7 +4,7 @@
 ### AI-Powered Medicine Label & Prescription Reader for Bharat
 
 [![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-mediscan--six.vercel.app-F59E0B?style=for-the-badge)](https://mediscan-six.vercel.app)
-[![GitHub](https://img.shields.io/badge/GitHub-amritanshushaw--cpu%2Fmeadeasy-181717?style=for-the-badge&logo=github)](https://github.com/amritanshushaw-cpu/med-easy)
+[![GitHub](https://img.shields.io/badge/GitHub-amritanshushaw--cpu%2Fmedeasy-181717?style=for-the-badge&logo=github)](https://github.com/amritanshushaw-cpu/med-easy)
 [![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?style=for-the-badge&logo=vercel)](https://vercel.com)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
@@ -277,8 +277,8 @@ med-easy/
 ### Steps
 ```bash
 # 1. Clone
-git clone https://github.com/amritanshushaw-cpu/meadeasy.git
-cd meadeasy
+git clone https://github.com/amritanshushaw-cpu/medeasy.git
+cd medeasy
 
 # 2. Install dependencies
 npm install
