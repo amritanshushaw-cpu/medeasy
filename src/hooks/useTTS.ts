@@ -60,29 +60,6 @@ export function useTTS(): UseTTSReturn {
     const audio = new Audio(audioUrl);
     audioRef.current = audio;
 
-    audio.oncanplaythrough = () => {
-      setIsLoading(false);
-      setIsSpeaking(true);
-      audio.play().catch(() => {
-        // Autoplay blocked — try Web Speech fallback
-        setIsSpeaking(false);
-        speakWebSpeechFallback(text, lang, setIsSpeaking);
-      });
-    };
-
-    audio.onended = () => setIsSpeaking(false);
-
-    audio.onerror = () => {
-      setIsLoading(false);
-      setIsSpeaking(false);
-      // Fallback to Web Speech
-      speakWebSpeechFallback(text, lang, setIsSpeaking);
-    };
-
-    // Trigger load
-    audio.load();
-
-    // Timeout — if no response in 8s, fall back
     const timeout = setTimeout(() => {
       if (isLoading) {
         stop();
@@ -99,6 +76,17 @@ export function useTTS(): UseTTSReturn {
         speakWebSpeechFallback(text, lang, setIsSpeaking);
       });
     };
+
+    audio.onended = () => setIsSpeaking(false);
+
+    audio.onerror = () => {
+      clearTimeout(timeout);
+      setIsLoading(false);
+      setIsSpeaking(false);
+      speakWebSpeechFallback(text, lang, setIsSpeaking);
+    };
+
+    audio.load();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stop]);

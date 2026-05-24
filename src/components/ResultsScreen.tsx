@@ -21,17 +21,21 @@ function isPrescription(r: ResultData): r is PrescriptionResult {
 function buildSpeechText(result: ResultData): string {
   if (isPrescription(result)) {
     const p = result as PrescriptionResult;
-    const medsText = (p.medicines || []).map(m =>
-      `${m.name}, ${m.dosage}, ${m.frequency}, ${m.duration}`
-    ).join('. ');
-    return [
-      p.patientName ? `Patient: ${p.patientName}.` : '',
-      p.age ? `Age: ${p.age}.` : '',
-      p.diagnosis ? `Diagnosis: ${p.diagnosis}.` : '',
-      medsText ? `Medicines prescribed: ${medsText}.` : '',
-      p.doctorName ? `Doctor: ${p.doctorName}.` : '',
-      p.notes ? `Additional notes: ${p.notes}.` : '',
-    ].filter(Boolean).join(' ');
+    const parts: string[] = [];
+    if (p.patientName && p.patientName !== 'Not visible') parts.push(`Patient: ${p.patientName}.`);
+    if (p.age && p.age !== 'Not visible') parts.push(`Age: ${p.age}.`);
+    if (p.diagnosis && p.diagnosis !== 'Not found') parts.push(`Diagnosis: ${p.diagnosis}.`);
+    const meds = (p.medicines || []).filter(m => m.name && m.name !== 'Not found');
+    if (meds.length > 0) {
+      const medsText = meds.map(m => {
+        const details = [m.dosage, m.frequency, m.duration].filter(Boolean).join(', ');
+        return `${m.name}${details ? ` (${details})` : ''}`;
+      }).join('. ');
+      parts.push(`Medicines prescribed: ${medsText}.`);
+    }
+    if (p.doctorName && p.doctorName !== 'Not visible') parts.push(`Doctor: ${p.doctorName}.`);
+    if (p.notes) parts.push(`Additional notes: ${p.notes}.`);
+    return parts.join(' ');
   }
   const r = result as ScanResult;
   return `Medicine: ${r.drugName}. How to take it: ${r.dosage}. Side effects: ${r.sideEffects}. Warnings: ${r.warnings}.`;
@@ -105,6 +109,14 @@ function PrescriptionResultsView({ result, selectedLang, onHome }: { result: Pre
         <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text3)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>
           Prescribed Medicines
         </div>
+        {(!p.medicines || p.medicines.length === 0) && (
+          <div className="glass-strong slide-up" style={{ animationDelay: '0.15s', display: 'flex', gap: '14px', alignItems: 'stretch', marginBottom: '8px' }}>
+            <div className="card-accent" style={{ background: 'var(--text3)' }} aria-hidden />
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: '15px', color: 'var(--text2)', margin: 0 }}>Could not identify specific medicines from this prescription. Try rescanning with better lighting.</p>
+            </div>
+          </div>
+        )}
         {(p.medicines || []).map((med, i) => (
           <article
             key={i}
@@ -182,10 +194,11 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
     let text: string;
     if (isPresc) {
       const p = result as PrescriptionResult;
-      const medsText = (p.medicines || []).map(m =>
-        `- ${m.name} (${m.dosage}, ${m.frequency}, ${m.duration})`
-      ).join('\n');
-      text = `📋 Med Easy Prescription Result\n\nPatient: ${p.patientName}\nAge: ${p.age}\nDiagnosis: ${p.diagnosis}\n\nMedicines:\n${medsText}\n\nDoctor: ${p.doctorName}\nNotes: ${p.notes}\n\nScanned with Med Easy`;
+      const meds = (p.medicines || []).filter(m => m.name && m.name !== 'Not found');
+      const medsText = meds.length > 0 ? '\n\nMedicines:\n' + meds.map(m =>
+        `- ${m.name}${[m.dosage, m.frequency, m.duration].filter(Boolean).length > 0 ? ` (${[m.dosage, m.frequency, m.duration].filter(Boolean).join(', ')})` : ''}`
+      ).join('\n') : '';
+      text = `📋 Med Easy Prescription Result\n\nPatient: ${p.patientName}\nAge: ${p.age}\nDiagnosis: ${p.diagnosis}${medsText}\n\nDoctor: ${p.doctorName}\nNotes: ${p.notes}\n\nScanned with Med Easy`;
     } else {
       const r = result as ScanResult;
       text = `💊 Med Easy Result\n\nMedicine: ${r.drugName}\nHow to take: ${r.dosage}\nSide effects: ${r.sideEffects}\nWarnings: ${r.warnings}\n\nScanned with Med Easy`;

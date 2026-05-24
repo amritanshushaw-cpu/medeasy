@@ -14,18 +14,133 @@ function imageHash(b64, lang) {
   return createHash('sha256').update(b64 + '|' + lang).digest('hex');
 }
 
-const SYSTEM = `You are a prescription reader for patients in India.
-Look at this prescription image very carefully.
-Extract ALL information including from bad handwriting and complex medical jargon.
+// Common medical abbreviations used in Indian prescriptions
+// Using string-based regex construction to avoid confusion with escape sequences
+const ABBREVIATION_PATTERNS = [
+  ['\\bBD\\b', 'ig', 'twice daily'],
+  ['\\bOD\\b', 'ig', 'once daily'],
+  ['\\bTDS\\b', 'ig', 'three times daily'],
+  ['\\bQDS\\b', 'ig', 'four times daily'],
+  ['\\bHS\\b', 'ig', 'at bedtime'],
+  ['\\bQHS\\b', 'ig', 'at bedtime'],
+  ['\\bAC\\b', 'ig', 'before meals'],
+  ['\\bPC\\b', 'ig', 'after meals'],
+  ['\\bPRN\\b', 'ig', 'as needed'],
+  ['\\bSTAT\\b', 'ig', 'immediately'],
+  ['\\bPO\\b', 'ig', 'by mouth'],
+  ['\\bIM\\b', 'ig', 'injection (intramuscular)'],
+  ['\\bIV\\b', 'ig', 'intravenous'],
+  ['\\bSOS\\b', 'ig', 'if necessary'],
+  ['\\b1-0-1\\b', 'ig', 'one in morning, one at night'],
+  ['\\b1-1-1\\b', 'ig', 'one three times daily'],
+  ['\\b1-0-0\\b', 'ig', 'one in the morning'],
+  ['\\b0-0-1\\b', 'ig', 'one at night'],
+  ['\\b0-1-0\\b', 'ig', 'one in the afternoon'],
+  ['\\b1-1-0\\b', 'ig', 'one morning and afternoon'],
+  ['\\b1-0-1-0\\b', 'ig', 'one morning and night'],
+  ['\\bMANE\\b', 'ig', 'in the morning'],
+  ['\\bNOCTE\\b', 'ig', 'at night'],
+  ['\\bTAB\\b', 'ig', 'tablet'],
+  ['\\bCAP\\b', 'ig', 'capsule'],
+  ['\\bSYR\\b', 'ig', 'syrup'],
+  ['\\bINJ\\b', 'ig', 'injection'],
+  ['\\bOINT\\b', 'ig', 'ointment'],
+  ['\\bCREAM\\b', 'ig', 'cream'],
+  ['\\bDROPS\\b', 'ig', 'drops'],
+  ['\\bMG\\b', 'ig', 'mg'],
+  ['\\bML\\b', 'ig', 'ml'],
+];
+
+const ABBREVIATIONS = ABBREVIATION_PATTERNS.map(function(p) {
+  return [new RegExp(p[0], p[1]), p[2]];
+});
+
+function expandAbbreviations(text) {
+  if (!text || typeof text !== 'string') return text || '';
+  let result = text;
+  for (const [pattern, replacement] of ABBREVIATIONS) {
+    result = result.replace(pattern, replacement);
+  }
+  return result;
+}
+
+function cleanMedicines(medicines) {
+  if (!Array.isArray(medicines) || medicines.length === 0) {
+    return [];
+  }
+  return medicines
+    .filter(function(m) {
+      if (!m || typeof m !== 'object') return false;
+      const name = String(m.name || '').trim().toLowerCase();
+      return name && name !== 'not found' && name !== 'unknown' && name !== 'none';
+    })
+    .map(function(m) {
+      return {
+        name:      expandAbbreviations(String(m.name      || '').trim()) || 'Not found',
+        dosage:    expandAbbreviations(String(m.dosage    || '').trim()),
+        frequency: expandAbbreviations(String(m.frequency || '').trim()),
+        duration:  expandAbbreviations(String(m.duration  || '').trim()),
+      };
+    });
+}
+
+const SYSTEM = `You are a medical prescription reader for patients in India. Read the prescription image carefully and extract all information accurately.
+
 Return ONLY a raw JSON object. NO markdown. NO backticks. NO text before or after.
-Use exactly this format:
-{"patientName":"patient name as written","age":"patient age if visible","diagnosis":"diagnosis in simple words, translate medical jargon","medicines":[{"name":"medicine name","dosage":"dosage amount","frequency":"how often to take","duration":"how long to take"}],"doctorName":"doctor name if visible","notes":"any other instructions on the prescription"}
-Critical rules:
-- Extract EVERY medicine on the prescription - do not miss any
-- Write diagnosis in plain simple words (translate complex medical terms)
-- If handwriting is unclear, make your best medical judgement based on context
-- Include dosage strength (e.g. "500mg"), frequency (e.g. "twice daily"), and duration (e.g. "7 days") for each medicine
-- If no prescription is visible: {"error":"No prescription found in this photo"}`;
+
+Required JSON format:
+{
+  "patientName": "Patient name as written on prescription",
+  "age": "Patient age if visible",
+  "diagnosis": "Diagnosis in simple, plain words - translate all medical jargon",
+  "medicines": [
+    {
+      "name": "Medicine name (brand or generic as written)",
+      "dosage": "Dosage strength like 500mg, 250mg/5ml, etc.",
+      "frequency": "How often to take - expand abbreviations into plain words (BD → twice daily, OD → once daily, TDS → three times daily, etc.)",
+      "duration": "How many days to take (e.g., 7 days, 10 days, 1 month)"
+    }
+  ],
+  "doctorName": "Doctor name if visible",
+  "notes": "Any other instructions on the prescription"
+}
+
+Critical extraction rules:
+- List EVERY medicine separately - do not combine or miss any
+- For each medicine, extract: exact name, strength/dosage, frequency, and duration
+- Expand ALL medical abbreviations to plain words
+- Write diagnosis in simple words a 5th grader can understand
+- For handwritten prescriptions, carefully read each character - compare medicine names against known Indian medicines if uncertain
+- Include the dosage form (tablet, syrup, injection, capsule, cream) in the medicine name if visible
+- If a field is truly not visible, use empty string "" - do NOT invent values
+- If no prescription is detected: {"error":"No prescription found in this photo. Please retake with better lighting and ensure the prescription is fully visible."}
+
+Common Indian prescription abbreviations you MUST expand:
+- BD → twice daily, OD → once daily, TDS → three times daily
+- QDS → four times daily, HS/QHS → at bedtime
+- AC → before meals, PC → after meals
+- PRN → as needed, STAT → immediately
+- 1-0-1 → one in morning and night, 1-1-1 → one three times daily`;
+
+function parseJSON(text) {
+  if (!text) return null;
+  const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+  try { return JSON.parse(cleaned); } catch (_) {}
+
+  const braceMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (braceMatch) {
+    try { return JSON.parse(braceMatch[0]); } catch (_) {}
+  }
+
+  const noTrailComma = cleaned.replace(/,\s*([}\]])/g, '$1');
+  try { return JSON.parse(noTrailComma); } catch (_) {}
+  if (braceMatch) {
+    try { return JSON.parse(braceMatch[0].replace(/,\s*([}\]])/g, '$1')); } catch (_) {}
+  }
+
+  return null;
+}
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -57,7 +172,7 @@ module.exports = async function handler(req, res) {
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + groqKey },
       body: JSON.stringify({
         model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-        max_tokens: 1200,
+        max_tokens: 1600,
         temperature: 0.05,
         messages: [
           { role: 'system', content: SYSTEM },
@@ -65,7 +180,7 @@ module.exports = async function handler(req, res) {
             role: 'user',
             content: [
               { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + String(image) } },
-              { type: 'text', text: 'Read this prescription carefully and return the JSON.' }
+              { type: 'text', text: 'Read every detail on this prescription. Extract ALL medicines listed. Expand abbreviations to plain words.' }
             ]
           }
         ]
@@ -82,26 +197,22 @@ module.exports = async function handler(req, res) {
     const raw = (groqData.choices && groqData.choices[0] && groqData.choices[0].message && groqData.choices[0].message.content) || '';
     if (!raw) return res.status(502).json({ error: 'No response from AI. Try again.' });
 
-    const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-
-    let parsed = null;
-    try { parsed = JSON.parse(cleaned); } catch (_) {
-      const match = cleaned.match(/\{[\s\S]*\}/);
-      if (match) { try { parsed = JSON.parse(match[0]); } catch (_) {} }
-    }
+    const parsed = parseJSON(raw);
     if (!parsed) {
-      console.error('JSON parse failed. Raw:', cleaned.slice(0, 200));
-      return res.status(502).json({ error: 'Could not read prescription. Retake in better lighting.' });
+      console.error('JSON parse failed. Raw:', raw.slice(0, 300));
+      return res.status(502).json({ error: 'Could not read prescription. Retake in better lighting with the full prescription visible.' });
     }
     if (parsed.error) return res.status(422).json({ error: parsed.error });
 
+    const medicines = cleanMedicines(parsed.medicines);
+
     let result = {
-      patientName: parsed.patientName || 'Not visible',
-      age:         parsed.age         || 'Not visible',
-      diagnosis:   parsed.diagnosis   || 'Not found',
-      medicines:   parsed.medicines   || [{ name: 'Not found', dosage: '', frequency: '', duration: '' }],
-      doctorName:  parsed.doctorName  || 'Not visible',
-      notes:       parsed.notes       || '',
+      patientName: parsed.patientName ? expandAbbreviations(String(parsed.patientName).trim()) : 'Not visible',
+      age:         parsed.age         ? String(parsed.age).trim() : 'Not visible',
+      diagnosis:   parsed.diagnosis   ? expandAbbreviations(String(parsed.diagnosis).trim()) : 'Not found',
+      medicines:   medicines,
+      doctorName:  parsed.doctorName  ? expandAbbreviations(String(parsed.doctorName).trim()) : 'Not visible',
+      notes:       parsed.notes       ? expandAbbreviations(String(parsed.notes).trim()) : '',
       confidence:  parsed.confidence  || 'medium',
       language:    'en',
       scanMode:    'prescription'
