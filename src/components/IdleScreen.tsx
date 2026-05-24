@@ -105,7 +105,7 @@ export const IdleScreen: React.FC<IdleScreenProps> = ({
           style={{ fontSize: '21px', minHeight: '66px', borderRadius: '20px' }}
         >
           <span aria-hidden style={{ fontSize: '26px' }}>💊</span>
-          Scan Medicine Label
+          Scan Prescription
         </button>
 
         <button
