@@ -82,7 +82,7 @@ export const IdleScreen: React.FC<IdleScreenProps> = ({
         MedEasy
       </h1>
       <p style={{ fontSize: '18px', color: 'var(--text2)', lineHeight: 1.65, marginBottom: '6px' }}>
-        Scan prescriptions &amp; medicine labels.
+        Scan medicine labels &amp; prescriptions.
       </p>
       <p style={{ fontSize: '18px', color: 'var(--text1)', lineHeight: 1.65, marginBottom: '28px', fontWeight: 600 }}>
         Understand in <span style={{ color: 'var(--gold)' }}>your language</span>.
@@ -100,6 +100,16 @@ export const IdleScreen: React.FC<IdleScreenProps> = ({
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '12px' }}>
         <button
           className="btn-primary"
+          onClick={() => onStart('label')}
+          aria-label="Open camera to scan a medicine label"
+          style={{ fontSize: '21px', minHeight: '66px', borderRadius: '20px' }}
+        >
+          <span aria-hidden style={{ fontSize: '26px' }}>💊</span>
+          Scan Medicine Label
+        </button>
+
+        <button
+          className="btn-secondary"
           onClick={() => onStart('prescription')}
           aria-label="Open camera to scan a prescription"
           style={{ fontSize: '21px', minHeight: '66px', borderRadius: '20px' }}

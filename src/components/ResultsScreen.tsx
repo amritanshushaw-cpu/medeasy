@@ -22,7 +22,8 @@ function buildSpeechText(result: ResultData): string {
   if (isPrescription(result)) {
     const p = result as PrescriptionResult;
     const parts: string[] = [];
-    // Patient info omitted per app requirements
+    if (p.patientName && p.patientName !== 'Not visible') parts.push(`Patient: ${p.patientName}.`);
+    if (p.age && p.age !== 'Not visible') parts.push(`Age: ${p.age}.`);
     if (p.diagnosis && p.diagnosis !== 'Not found') parts.push(`Diagnosis: ${p.diagnosis}.`);
     const meds = (p.medicines || []).filter(m => m.name && m.name !== 'Not found');
     if (meds.length > 0) {
@@ -68,6 +69,26 @@ function PrescriptionResultsView({ result, selectedLang, onHome }: { result: Pre
           <button className="btn-icon" onClick={onHome} aria-label="Go home" style={{ width: '40px', height: '40px' }}>
             <span style={{ fontSize: '16px' }}>🏠</span>
           </button>
+        </div>
+      </div>
+
+      {/* Patient Info Card */}
+      <div className="card-gradient-border slide-up" style={{ marginBottom: '12px', animationDelay: '0s' }}>
+        <div className="inner" style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+          <div style={{
+            width: '68px', height: '68px', borderRadius: '12px',
+            background: 'linear-gradient(135deg, rgba(6,182,212,.2), rgba(6,182,212,.05))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', flexShrink: 0,
+          }}>👤</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '4px', fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase' }}>Patient</div>
+            <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--cyan)', lineHeight: 1.2 }}>
+              {p.patientName}
+            </div>
+            {p.age && p.age !== 'Not visible' && (
+              <div style={{ fontSize: '14px', color: 'var(--text2)', marginTop: '2px' }}>Age: {p.age}</div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -177,7 +198,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
       const medsText = meds.length > 0 ? '\n\nMedicines:\n' + meds.map(m =>
         `- ${m.name}${[m.dosage, m.frequency, m.duration].filter(Boolean).length > 0 ? ` (${[m.dosage, m.frequency, m.duration].filter(Boolean).join(', ')})` : ''}`
       ).join('\n') : '';
-      text = `📋 MedEasy Prescription Result\n\nDiagnosis: ${p.diagnosis}${medsText}\n\nDoctor: ${p.doctorName}\nNotes: ${p.notes}\n\nScanned with MedEasy`;
+      text = `📋 MedEasy Prescription Result\n\nPatient: ${p.patientName}\nAge: ${p.age}\nDiagnosis: ${p.diagnosis}${medsText}\n\nDoctor: ${p.doctorName}\nNotes: ${p.notes}\n\nScanned with MedEasy`;
     } else {
       const r = result as ScanResult;
       text = `💊 MedEasy Result\n\nMedicine: ${r.drugName}\nHow to take: ${r.dosage}\nSide effects: ${r.sideEffects}\nWarnings: ${r.warnings}\n\nScanned with MedEasy`;

@@ -10,7 +10,7 @@ interface HistoryScreenProps {
 }
 
 function getItemTitle(result: ScanResult | PrescriptionResult): string {
-  if ('patientName' in result) return 'Prescription Scan';
+  if ('patientName' in result) return result.patientName || 'Prescription Scan';
   return result.drugName || 'Label Scan';
 }
 
