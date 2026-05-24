@@ -79,3 +79,19 @@ export const CONFIDENCE_STYLE: Record<string, { bg: string; border: string; colo
   medium: { bg: 'rgba(250,204,21,.15)',  border: 'rgba(250,204,21,.4)',  color: '#FACC15', label: '~ Fair read'  },
   low:    { bg: 'rgba(248,113,113,.15)', border: 'rgba(248,113,113,.4)', color: '#F87171', label: '! Unclear'    },
 };
+
+// Report Analyzer Types
+export type KeyMetricStatus = 'normal' | 'high' | 'low';
+
+export interface KeyMetric {
+  name: string;
+  value: string;
+  status: KeyMetricStatus;
+}
+
+export interface AnalysisResult {
+  summary: string;
+  keyMetrics: KeyMetric[];
+  nextSteps: string[];
+  timestamp?: number;
+}
