@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'icon-192.png', 'icon-512.png'],
       manifest: {
-        name: 'Med Easy – Medicine & Prescription Reader',
-        short_name: 'Med Easy',
+        name: 'MedEasy – Medicine & Prescription Reader',
+        short_name: 'MedEasy',
         description: 'Scan medicine labels and prescriptions. Get text and audio in 12+ Indian languages.',
         theme_color: '#090910',
         background_color: '#090910',

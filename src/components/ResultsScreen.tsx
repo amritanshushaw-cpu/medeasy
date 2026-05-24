@@ -198,13 +198,13 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
       const medsText = meds.length > 0 ? '\n\nMedicines:\n' + meds.map(m =>
         `- ${m.name}${[m.dosage, m.frequency, m.duration].filter(Boolean).length > 0 ? ` (${[m.dosage, m.frequency, m.duration].filter(Boolean).join(', ')})` : ''}`
       ).join('\n') : '';
-      text = `📋 Med Easy Prescription Result\n\nPatient: ${p.patientName}\nAge: ${p.age}\nDiagnosis: ${p.diagnosis}${medsText}\n\nDoctor: ${p.doctorName}\nNotes: ${p.notes}\n\nScanned with Med Easy`;
+      text = `📋 MedEasy Prescription Result\n\nPatient: ${p.patientName}\nAge: ${p.age}\nDiagnosis: ${p.diagnosis}${medsText}\n\nDoctor: ${p.doctorName}\nNotes: ${p.notes}\n\nScanned with MedEasy`;
     } else {
       const r = result as ScanResult;
-      text = `💊 Med Easy Result\n\nMedicine: ${r.drugName}\nHow to take: ${r.dosage}\nSide effects: ${r.sideEffects}\nWarnings: ${r.warnings}\n\nScanned with Med Easy`;
+      text = `💊 MedEasy Result\n\nMedicine: ${r.drugName}\nHow to take: ${r.dosage}\nSide effects: ${r.sideEffects}\nWarnings: ${r.warnings}\n\nScanned with MedEasy`;
     }
     try {
-      if (navigator.share) await navigator.share({ title: 'Med Easy Result', text });
+      if (navigator.share) await navigator.share({ title: 'MedEasy Result', text });
       else { await navigator.clipboard.writeText(text); toast('✓ Copied to clipboard!'); }
     } catch { /* user cancelled */ }
   };

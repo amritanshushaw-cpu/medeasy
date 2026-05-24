@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 
+import type { ScanMode } from '../types';
+
 interface CameraScreenProps {
   videoRef:  React.RefObject<HTMLVideoElement>;
   canvasRef: React.RefObject<HTMLCanvasElement>;
   onCapture: () => void;
   onBack:    () => void;
+  scanMode:  ScanMode;
 }
 
 /** The four corner L-brackets of the scan frame */
@@ -33,8 +36,9 @@ const ScanCorner: React.FC<{ top?: boolean; bottom?: boolean; left?: boolean; ri
 );
 
 export const CameraScreen: React.FC<CameraScreenProps> = ({
-  videoRef, canvasRef, onCapture, onBack,
+  videoRef, canvasRef, onCapture, onBack, scanMode,
 }) => {
+  const isPrescription = scanMode === 'prescription';
   const [flash, setFlash] = useState(false);
 
   const handleCapture = () => {
@@ -93,7 +97,7 @@ export const CameraScreen: React.FC<CameraScreenProps> = ({
         />
       </div>
 
-      {/* "Aim the label inside the frame" hint */}
+      {/* Scan hint text */}
       <div aria-live="polite" style={{
         position: 'absolute',
         top: '50%', left: '50%',
@@ -101,7 +105,7 @@ export const CameraScreen: React.FC<CameraScreenProps> = ({
         color: 'rgba(255,255,255,.8)', fontSize: '15px', textAlign: 'center',
         pointerEvents: 'none',
       }}>
-        Aim the label inside the frame
+        {isPrescription ? 'Aim the prescription inside the frame' : 'Aim the label inside the frame'}
       </div>
 
       {/* White flash on capture */}
@@ -138,7 +142,7 @@ export const CameraScreen: React.FC<CameraScreenProps> = ({
         {/* Shutter button */}
         <button
           onClick={handleCapture}
-          aria-label="Take photo of medicine label"
+          aria-label={isPrescription ? 'Take photo of prescription' : 'Take photo of medicine label'}
           style={{
             width: '84px', height: '84px', borderRadius: '50%',
             background: '#F4C430', border: '4px solid white',

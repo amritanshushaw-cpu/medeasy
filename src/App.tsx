@@ -125,7 +125,7 @@ const App: React.FC = () => {
     case 'idle':
       return <IdleScreen onStart={handleStart} selectedLang={selectedLang} onLangChange={setSelectedLang} historyCount={history.length} onViewHistory={handleViewHistory} />;
     case 'camera':
-      return <CameraScreen videoRef={camera.videoRef} canvasRef={camera.canvasRef} onCapture={handleCapture} onBack={handleCameraBack} />;
+      return <CameraScreen videoRef={camera.videoRef} canvasRef={camera.canvasRef} onCapture={handleCapture} onBack={handleCameraBack} scanMode={scanMode} />;
     case 'processing':
       return <ProcessingScreen language={selectedLang.code} scanMode={scanMode} />;
     case 'results':

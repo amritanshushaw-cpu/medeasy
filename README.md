@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🏥 Med Easy
+# 🏥 MedEasy
 ### AI-Powered Medicine Label & Prescription Reader for Bharat
 
 [![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-mediscan--six.vercel.app-F59E0B?style=for-the-badge)](https://mediscan-six.vercel.app)
@@ -25,7 +25,7 @@ Every year, thousands of patients in India take wrong medicine doses or misunder
 - Patients prescribed medicines with complex dosage schedules
 - Non-English speakers across 12+ Indian language groups
 
-**Med Easy solves this with a single camera scan — for both medicine labels AND prescriptions.**
+**MedEasy solves this with a single camera scan — for both medicine labels AND prescriptions.**
 
 ---
 
@@ -386,7 +386,7 @@ MIT License — free to use, modify, and distribute.
 
 Built with ❤️ for Bharat 🇮🇳
 
-**Med Easy** — Making medicine & prescriptions accessible to every Indian
+**MedEasy** — Making medicine & prescriptions accessible to every Indian
 
 [mediscan-six.vercel.app](https://mediscan-six.vercel.app)
 

@@ -30,7 +30,7 @@ export const IdleScreen: React.FC<IdleScreenProps> = ({
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontSize: '22px' }}>🏥</span>
-          <span className="display gradient-text" style={{ fontSize: '26px' }}>Med Easy</span>
+          <span className="display gradient-text" style={{ fontSize: '26px' }}>MedEasy</span>
         </div>
         <div className="india-bar" style={{ width: '80px', marginTop: '5px' }} />
       </div>
@@ -79,7 +79,7 @@ export const IdleScreen: React.FC<IdleScreenProps> = ({
       </div>
 
       <h1 className="display gradient-text" style={{ fontSize: '64px', marginBottom: '6px', lineHeight: 1 }}>
-        Med Easy
+        MedEasy
       </h1>
       <p style={{ fontSize: '18px', color: 'var(--text2)', lineHeight: 1.65, marginBottom: '6px' }}>
         Scan medicine labels &amp; prescriptions.
