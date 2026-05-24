@@ -3,7 +3,7 @@
 # 🏥 MedEasy
 ### AI-Powered Medicine Label & Prescription Reader for Bharat
 
-[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-medeasy.vercel.app-F59E0B?style=for-the-badge)](https://medeasy.vercel.app)
+[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-med-easy-six.vercel.app-F59E0B?style=for-the-badge)](https://med-easy-six.vercel.app)
 [![GitHub](https://img.shields.io/badge/GitHub-amritanshushaw--cpu%2Fmedeasy-181717?style=for-the-badge&logo=github)](https://github.com/amritanshushaw-cpu/medeasy)
 [![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?style=for-the-badge&logo=vercel)](https://vercel.com)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
@@ -388,6 +388,6 @@ Built with ❤️ for Bharat 🇮🇳
 
 **MedEasy** — Making medicine & prescriptions accessible to every Indian
 
-[medeasy.vercel.app](https://medeasy.vercel.app)
+[med-easy-six.vercel.app](https://med-easy-six.vercel.app)
 
 </div>
