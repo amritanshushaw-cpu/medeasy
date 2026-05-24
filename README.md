@@ -35,6 +35,7 @@ Every year, thousands of patients in India take wrong medicine doses or misunder
 |---|---|
 | 📷 **Medicine Label Scan** | Point camera at any medicine label — tablet, syrup, injection |
 | 📋 **Prescription Scan** | Scan handwritten/printed prescriptions — decodes medical jargon & bad handwriting |
+| 📊 **Report Analysis** | Upload medical reports (blood tests, lipid profiles, etc.) for AI-powered analysis with metric extraction |
 | 🧠 **AI Vision OCR** | Llama 4 Scout reads text even on curved/glossy surfaces and messy handwriting |
 | 📝 **Plain Language Output** | Rewrites complex dosage & diagnosis at 3rd grade reading level |
 | 🌐 **12 Indian Languages** | Hindi, Bengali, Tamil, Telugu, Marathi, Gujarati, Kannada, Malayalam, Punjabi, Odia, Urdu, English |
@@ -42,7 +43,7 @@ Every year, thousands of patients in India take wrong medicine doses or misunder
 | 🗣️ **Bhashini TTS** | Optional official Indian government AI voices via Bhashini ULCA |
 | 📋 **Scan History** | Last 20 scans saved locally with thumbnails |
 | 📤 **Share Results** | Native share sheet or clipboard copy |
-| ⚡ **Smart Caching** | SHA-256 image hash prevents duplicate API calls |
+| ⚡ **Smart Caching** | SHA-256 image hash prevents duplicate API calls (scan + report both cached) |
 | 📱 **PWA** | Installable on Android/iOS home screen, works offline (shell) |
 | ♿ **Accessible** | WCAG AA contrast, ARIA labels, 56px+ touch targets, Atkinson Hyperlegible font |
 
@@ -57,15 +58,20 @@ Every year, thousands of patients in India take wrong medicine doses or misunder
 │  ┌──────────────┐   ┌──────────────┐   ┌──────────────────────────┐   │
 │  │  IdleScreen  │   │ CameraScreen │   │   ResultsScreen          │   │
 │  │  Lang Select │──▶│ getUserMedia │──▶│  Label or Prescription   │   │
-│  │  2 Scan Modes│   │ Capture JPEG │   │  Result Cards + TTS      │   │
-│  │  History     │   └──────┬───────┘   │  Share Button            │   │
-│  └──────────────┘          │           └──────────────────────────┘   │
-│                    ┌───────▼────────┐                                  │
-│                    │  useCamera.ts  │  Resize → 1024px max            │
-│                    │  65% JPEG      │  SHA-256 cache key              │
-│                    └───────┬────────┘                                  │
-│                            │ POST /api/scan or /api/scan-prescription │
-│                            │ { image: base64, language: "hi" }        │
+│  │  3 Scan Modes│   │ Capture JPEG │   │  Result Cards + TTS      │   │
+│  │  + Report    │   └──────┬───────┘   │  Share Button            │   │
+│  │  History     │          │           └──────────────────────────┘   │
+│  └──────┬───────┘   ┌──────▼───────┐   ┌──────────────────────────┐   │
+│         │           │  useCamera   │   │  ReportAnalyzer          │   │
+│         │           │  Resize 1024 │   │  Summary + Metrics       │   │
+│         │           │  65% JPEG    │   │  Next Steps + Thumbnail  │   │
+│         │           │  SHA-256 key │   └────────────┬─────────────┘   │
+│         │           └──────┬───────┘                │                   │
+│         │                  │                        │                   │
+│         │  POST /api/scan or /api/scan-prescription │                   │
+│         │  ────────────────┘                        │                   │
+│         │  POST /api/scan-report (via upload)       │                   │
+│         └───────────────────────────────────────────┘                   │
 └────────────────────────────┼──────────────────────────────────────────┘
                              │
                              ▼ HTTPS
@@ -75,6 +81,7 @@ Every year, thousands of patients in India take wrong medicine doses or misunder
 │  ┌────────────────────────────────────────────────────────────────┐   │
 │  │  api/scan.js  (Medicine Labels)                                │   │
 │  │  api/scan-prescription.js  (Prescriptions)                     │   │
+│  │  api/scan-report.js  (Medical Report Analysis)                 │   │
 │  │                                                                │   │
 │  │  1. Rate limit check (15 req/min per IP)                      │   │
 │  │  2. SHA-256 full-image hash → in-process cache lookup          │   │
@@ -86,6 +93,9 @@ Every year, thousands of patients in India take wrong medicine doses or misunder
 │  │     │  PRESCRIPTION PROMPT:                              │     │   │
 │  │     │  → { patientName, age, diagnosis, medicines[],    │     │   │
 │  │     │      doctorName, notes }                           │     │   │
+│  │     │                                                    │     │   │
+│  │     │  REPORT PROMPT:                                    │     │   │
+│  │     │  → { summary, keyMetrics[], nextSteps[] }         │     │   │
 │  │     └──────────────────────────────────────────────────┘     │   │
 │  │  4. If lang ≠ en → Bhashini translate OR Groq translate      │   │
 │  │  5. Cache result, return JSON                                 │   │
@@ -130,6 +140,15 @@ User taps "Scan Prescription"
     → Auto TTS Readout
 ```
 
+### Medical Report Analysis
+```
+User taps "Analyze Report" 
+    → File picker → Drag & drop or browse for report (PDF/PNG/JPEG)
+    → File read as base64 → SHA-256 cache check → POST /api/scan-report
+    → Groq Vision (report prompt) → Extract metrics, summary, recommendations
+    → Results (Plain-language summary, Key Metrics with status, Next Steps)
+```
+
 ---
 
 ## 🌐 APIs & Integrations
@@ -159,6 +178,16 @@ User taps "Scan Prescription"
 | Auth | None (proxied server-side to bypass CORS) |
 
 ### 4. Web Speech API — Browser TTS Fallback
+
+### 5. Report Analysis API — `/api/scan-report`
+| Property | Value |
+|---|---|
+| Model | `meta-llama/llama-4-scout-17b-16e-instruct` |
+| Purpose | Vision-based medical report analysis (blood tests, lipid profiles, etc.) |
+| Input | `{ image: "<base64>" }` — JPEG/PNG of the report |
+| Output | `{ summary, keyMetrics: [{name, value, status}], nextSteps: [string] }` |
+| Caching | SHA-256 image hash → in-process LRU cache (500 entries) |
+| Rate limit | 15 requests/min per IP |
 
 ---
 
@@ -222,10 +251,19 @@ Layer 3: Web Speech API in English
 ### AI & APIs
 | Service | Purpose | Cost |
 |---|---|---|
-| Groq (Llama 4 Scout) | Vision OCR + plain-language extraction | Free (14,400/day) |
+| Groq (Llama 4 Scout) | Vision OCR + plain-language extraction + report analysis | Free (14,400/day) |
 | Groq (Llama 3.3 70B) | Translation fallback | Free |
 | Bhashini ULCA | Official Indian translation + TTS | Free (Government) |
 | Google Translate TTS | Audio proxy | Free |
+
+### Report Analysis Components
+| Component | Purpose |
+|---|---|
+| `api/scan-report.js` | Serverless function: Groq vision → metric extraction → JSON response |
+| `ReportUploadScreen.tsx` | Drag & drop file upload with type/size validation |
+| `ReportProcessingScreen.tsx` | Animated loading with step indicators |
+| `ReportAnalyzer.tsx` | Results display: summary card, metric table with status badges, next steps |
+| `reportAnalyzer.ts` | Client API wrapper with SHA-256 cache dedup in `App.tsx` |
 
 ---
 
@@ -235,7 +273,8 @@ Layer 3: Web Speech API in English
 med-easy/
 ├── api/
 │   ├── scan.js                  # Vision OCR + translation (medicine labels)
-│   ├── scan-prescription.js     # Vision OCR + translation (prescriptions)  ← NEW
+│   ├── scan-prescription.js     # Vision OCR + translation (prescriptions)
+│   ├── scan-report.js           # Vision OCR + analysis (medical reports)  ← NEW
 │   └── tts.js                   # Google TTS audio proxy
 ├── public/
 │   ├── manifest.json            # PWA manifest
@@ -248,7 +287,10 @@ med-easy/
 │   │   ├── ProcessingScreen.tsx # Loading with mode-aware steps
 │   │   ├── ResultsScreen.tsx    # Label OR Prescription results + TTS + share
 │   │   ├── HistoryScreen.tsx    # Past scans (both types) with thumbnails
-│   │   └── ErrorScreen.tsx      # Error with smart tips
+│   │   ├── ErrorScreen.tsx      # Error with smart tips
+│   │   ├── ReportUploadScreen.tsx    # Drag & drop report upload with validation  ← NEW
+│   │   ├── ReportProcessingScreen.tsx # Animated analysis progress screen        ← NEW
+│   │   └── ReportAnalyzer.tsx    # Report results: summary, metrics, next steps  ← NEW
 │   ├── hooks/
 │   │   ├── useCamera.ts         # Camera stream + resize + capture
 │   │   └── useTTS.ts            # 3-layer TTS with Google proxy
@@ -314,10 +356,11 @@ Visit `mediscan-six.vercel.app` on any browser. On Android/iOS tap **Add to Home
 ### Step 2 — Select Your Language
 Scroll the language bar at the bottom of the home screen. Tap your preferred language.
 
-### Step 3 — Choose Scan Type
-Two buttons on the home screen:
+### Step 3 — Choose Action
+Three options on the home screen:
 - **💊 Scan Medicine Label** — for medicine bottles, strips, syrups, etc.
 - **📋 Scan Prescription** — for handwritten/printed prescriptions from doctors
+- **📊 Analyze Report** — for medical reports (blood tests, lipid profiles, etc.)
 
 ### Step 4 — Scan
 Tap your chosen option. Hold the item inside the gold frame. Tap the shutter button.
@@ -338,6 +381,18 @@ Tap your chosen option. Hold the item inside the gold frame. Tap the shutter but
 - 📝 **Additional Notes**
 
 The app **automatically reads the results aloud** in your selected language.
+
+### Step 6 — Analyze Medical Reports
+Tap the **📊 Analyze Report** button on the home screen.
+
+Upload a medical report (blood test, lipid profile, thyroid panel, etc.) by dragging & dropping or browsing files. Supported formats: PDF, PNG, JPEG, WebP (max 20MB).
+
+**Report Analysis Results:**
+- 📋 **Plain-Language Summary** — what the report says in simple words
+- 📊 **Key Metrics** — each metric with value and status badge (Normal / High / Low)
+- ✅ **Recommended Actions** — actionable next steps based on the results
+
+Results are **SHA-256 cached** so re-uploading the same report returns instantly.
 
 ---
 
