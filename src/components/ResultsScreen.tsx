@@ -22,8 +22,7 @@ function buildSpeechText(result: ResultData): string {
   if (isPrescription(result)) {
     const p = result as PrescriptionResult;
     const parts: string[] = [];
-    // Patient name omitted per app requirements
-    if (p.age && p.age !== 'Not visible') parts.push(`Age: ${p.age}.`);
+    // Patient info omitted per app requirements
     if (p.diagnosis && p.diagnosis !== 'Not found') parts.push(`Diagnosis: ${p.diagnosis}.`);
     const meds = (p.medicines || []).filter(m => m.name && m.name !== 'Not found');
     if (meds.length > 0) {
