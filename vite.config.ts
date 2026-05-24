@@ -10,9 +10,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'icon-192.png', 'icon-512.png'],
       manifest: {
-        name: 'MediScan – Medicine Label Translator',
-        short_name: 'MediScan',
-        description: 'Scan medicine labels and get plain-English explanations',
+        name: 'Med Easy – Medicine & Prescription Reader',
+        short_name: 'Med Easy',
+        description: 'Scan medicine labels and prescriptions. Get text and audio in 12+ Indian languages.',
         theme_color: '#090910',
         background_color: '#090910',
         display: 'standalone',
@@ -23,7 +23,6 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Cache static assets aggressively; never cache API calls
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
@@ -38,7 +37,6 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
   },
-  // In dev mode, proxy /api/* to avoid CORS issues
   server: {
     proxy: {
       '/api': {

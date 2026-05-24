@@ -1,3 +1,5 @@
+export type ScanMode = 'label' | 'prescription';
+
 export type Screen = 'idle' | 'camera' | 'processing' | 'results' | 'error';
 
 export interface ScanResult {
@@ -5,15 +7,39 @@ export interface ScanResult {
   dosage: string;
   sideEffects: string;
   warnings: string;
-  confidence: 'high' | 'medium' | 'low';
+  confidence: string;
   cached?: boolean;
   timestamp?: number;
   language?: string;
+  scanMode?: ScanMode;
 }
+
+export interface PrescriptionMedicine {
+  name: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+}
+
+export interface PrescriptionResult {
+  patientName: string;
+  age: string;
+  diagnosis: string;
+  medicines: PrescriptionMedicine[];
+  doctorName: string;
+  notes: string;
+  confidence: string;
+  cached?: boolean;
+  timestamp?: number;
+  language?: string;
+  scanMode?: ScanMode;
+}
+
+export type ResultData = ScanResult | PrescriptionResult;
 
 export interface HistoryItem {
   id: string;
-  result: ScanResult;
+  result: ResultData;
   thumbnail?: string;
   timestamp: number;
 }
@@ -48,7 +74,7 @@ export const RESULT_CARDS = [
   { key: 'warnings'    as const, icon: '⚠️', label: 'Warnings',       color: '#F87171', ariaLabel: 'Warnings' },
 ];
 
-export const CONFIDENCE_STYLE = {
+export const CONFIDENCE_STYLE: Record<string, { bg: string; border: string; color: string; label: string }> = {
   high:   { bg: 'rgba(74,222,128,.15)',  border: 'rgba(74,222,128,.4)',  color: '#4ADE80', label: '✓ Clear read' },
   medium: { bg: 'rgba(250,204,21,.15)',  border: 'rgba(250,204,21,.4)',  color: '#FACC15', label: '~ Fair read'  },
   low:    { bg: 'rgba(248,113,113,.15)', border: 'rgba(248,113,113,.4)', color: '#F87171', label: '! Unclear'    },

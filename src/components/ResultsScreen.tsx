@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { ScanResult, RESULT_CARDS, CONFIDENCE_STYLE, Language } from '../types';
+import type { ScanResult, PrescriptionResult, ResultData, Language } from '../types';
+import { RESULT_CARDS, CONFIDENCE_STYLE } from '../types';
 
 interface ResultsScreenProps {
-  result: ScanResult;
+  result: ResultData;
   isSpeaking: boolean;
   isLoadingBhashini?: boolean;
   onSpeak: (text: string, lang?: string) => void;
@@ -13,8 +14,145 @@ interface ResultsScreenProps {
   thumbnail?: string;
 }
 
-function buildSpeechText(r: ScanResult): string {
+function isPrescription(r: ResultData): r is PrescriptionResult {
+  return r.scanMode === 'prescription' || 'patientName' in r;
+}
+
+function buildSpeechText(result: ResultData): string {
+  if (isPrescription(result)) {
+    const p = result as PrescriptionResult;
+    const medsText = (p.medicines || []).map(m =>
+      `${m.name}, ${m.dosage}, ${m.frequency}, ${m.duration}`
+    ).join('. ');
+    return [
+      p.patientName ? `Patient: ${p.patientName}.` : '',
+      p.age ? `Age: ${p.age}.` : '',
+      p.diagnosis ? `Diagnosis: ${p.diagnosis}.` : '',
+      medsText ? `Medicines prescribed: ${medsText}.` : '',
+      p.doctorName ? `Doctor: ${p.doctorName}.` : '',
+      p.notes ? `Additional notes: ${p.notes}.` : '',
+    ].filter(Boolean).join(' ');
+  }
+  const r = result as ScanResult;
   return `Medicine: ${r.drugName}. How to take it: ${r.dosage}. Side effects: ${r.sideEffects}. Warnings: ${r.warnings}.`;
+}
+
+function PrescriptionResultsView({ result, selectedLang, onHome }: { result: PrescriptionResult; selectedLang: Language; onHome: () => void }) {
+  const p = result;
+  const conf = CONFIDENCE_STYLE[p.confidence] ?? CONFIDENCE_STYLE.low;
+
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+        <div>
+          <h1 className="display gradient-text" style={{ fontSize: '38px', lineHeight: 1 }}>Prescription</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+            {selectedLang.code !== 'en' && (
+              <span style={{ fontSize: '12px', color: 'var(--gold)', fontWeight: 600 }}>
+                {selectedLang.flag} {selectedLang.name}
+              </span>
+            )}
+            {result.cached && (
+              <span style={{ fontSize: '11px', color: 'var(--text3)' }}>⚡ cached</span>
+            )}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div style={{
+            padding: '5px 12px', borderRadius: '20px', fontSize: '13px', fontWeight: 700,
+            background: conf.bg, border: `1px solid ${conf.border}`, color: conf.color,
+          }}>{conf.label}</div>
+          <button className="btn-icon" onClick={onHome} aria-label="Go home" style={{ width: '40px', height: '40px' }}>
+            <span style={{ fontSize: '16px' }}>🏠</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Patient Info Card */}
+      <div className="card-gradient-border slide-up" style={{ marginBottom: '12px', animationDelay: '0s' }}>
+        <div className="inner" style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+          <div style={{
+            width: '68px', height: '68px', borderRadius: '12px',
+            background: 'linear-gradient(135deg, rgba(6,182,212,.2), rgba(6,182,212,.05))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', flexShrink: 0,
+          }}>👤</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '4px', fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase' }}>Patient</div>
+            <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--cyan)', lineHeight: 1.2 }}>
+              {p.patientName}
+            </div>
+            {p.age && p.age !== 'Not visible' && (
+              <div style={{ fontSize: '14px', color: 'var(--text2)', marginTop: '2px' }}>Age: {p.age}</div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Diagnosis Card */}
+      <div className="glass-strong slide-up" style={{ animationDelay: '0.1s', display: 'flex', gap: '14px', alignItems: 'stretch', marginBottom: '10px' }}>
+        <div className="card-accent" style={{ background: '#A78BFA' }} aria-hidden />
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px' }}>
+            <span aria-hidden style={{ fontSize: '18px' }}>🩺</span>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#A78BFA', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Diagnosis</span>
+          </div>
+          <p style={{ fontSize: '17px', lineHeight: 1.65, color: 'var(--text1)', margin: 0 }}>{p.diagnosis}</p>
+        </div>
+      </div>
+
+      {/* Medicines Cards */}
+      <div style={{ marginBottom: '10px' }}>
+        <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text3)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>
+          Prescribed Medicines
+        </div>
+        {(p.medicines || []).map((med, i) => (
+          <article
+            key={i}
+            className="glass-strong slide-up"
+            aria-label={`Medicine ${i + 1}: ${med.name}`}
+            style={{ animationDelay: `${i * 0.1 + 0.15}s`, display: 'flex', gap: '14px', alignItems: 'stretch', marginBottom: '8px' }}
+          >
+            <div className="card-accent" style={{ background: '#60A5FA' }} aria-hidden />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--gold)', marginBottom: '6px' }}>{med.name}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                {med.dosage && <div><span style={{ fontSize: '11px', color: 'var(--text3)' }}>Dosage</span><p style={{ fontSize: '15px', color: 'var(--text1)', margin: '2px 0' }}>{med.dosage}</p></div>}
+                {med.frequency && <div><span style={{ fontSize: '11px', color: 'var(--text3)' }}>Frequency</span><p style={{ fontSize: '15px', color: 'var(--text1)', margin: '2px 0' }}>{med.frequency}</p></div>}
+                {med.duration && <div style={{ gridColumn: 'span 2' }}><span style={{ fontSize: '11px', color: 'var(--text3)' }}>Duration</span><p style={{ fontSize: '15px', color: 'var(--text1)', margin: '2px 0' }}>{med.duration}</p></div>}
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {/* Doctor & Notes */}
+      {p.doctorName && p.doctorName !== 'Not visible' && (
+        <div className="glass-strong slide-up" style={{ animationDelay: '0.35s', display: 'flex', gap: '14px', alignItems: 'stretch', marginBottom: '10px' }}>
+          <div className="card-accent" style={{ background: '#10B981' }} aria-hidden />
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px' }}>
+              <span aria-hidden style={{ fontSize: '18px' }}>👨‍⚕️</span>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#10B981', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Doctor</span>
+            </div>
+            <p style={{ fontSize: '17px', lineHeight: 1.65, color: 'var(--text1)', margin: 0 }}>{p.doctorName}</p>
+          </div>
+        </div>
+      )}
+
+      {p.notes && (
+        <div className="glass-strong slide-up" style={{ animationDelay: '0.4s', display: 'flex', gap: '14px', alignItems: 'stretch', marginBottom: '10px' }}>
+          <div className="card-accent" style={{ background: '#F87171' }} aria-hidden />
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px' }}>
+              <span aria-hidden style={{ fontSize: '18px' }}>📝</span>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#F87171', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Notes</span>
+            </div>
+            <p style={{ fontSize: '17px', lineHeight: 1.65, color: 'var(--text1)', margin: 0 }}>{p.notes}</p>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 export const ResultsScreen: React.FC<ResultsScreenProps> = ({
@@ -24,9 +162,11 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg]   = useState('✓ Copied to clipboard!');
   const speechText = buildSpeechText(result);
-  const conf = CONFIDENCE_STYLE[result.confidence] ?? CONFIDENCE_STYLE.low;
+  const isPresc = isPrescription(result);
+  const conf = isPresc
+    ? (CONFIDENCE_STYLE[(result as PrescriptionResult).confidence] ?? CONFIDENCE_STYLE.low)
+    : (CONFIDENCE_STYLE[(result as ScanResult).confidence] ?? CONFIDENCE_STYLE.low);
 
-  // Auto-speak on load
   useEffect(() => {
     const t = setTimeout(() => onSpeak(speechText, selectedLang.code), 900);
     return () => clearTimeout(t);
@@ -39,9 +179,19 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
   };
 
   const handleShare = async () => {
-    const text = `💊 MediScan Result\n\nMedicine: ${result.drugName}\nHow to take: ${result.dosage}\nSide effects: ${result.sideEffects}\nWarnings: ${result.warnings}\n\nScanned with MediScan — mediscan-six.vercel.app`;
+    let text: string;
+    if (isPresc) {
+      const p = result as PrescriptionResult;
+      const medsText = (p.medicines || []).map(m =>
+        `- ${m.name} (${m.dosage}, ${m.frequency}, ${m.duration})`
+      ).join('\n');
+      text = `📋 Med Easy Prescription Result\n\nPatient: ${p.patientName}\nAge: ${p.age}\nDiagnosis: ${p.diagnosis}\n\nMedicines:\n${medsText}\n\nDoctor: ${p.doctorName}\nNotes: ${p.notes}\n\nScanned with Med Easy`;
+    } else {
+      const r = result as ScanResult;
+      text = `💊 Med Easy Result\n\nMedicine: ${r.drugName}\nHow to take: ${r.dosage}\nSide effects: ${r.sideEffects}\nWarnings: ${r.warnings}\n\nScanned with Med Easy`;
+    }
     try {
-      if (navigator.share) await navigator.share({ title: 'MediScan Result', text });
+      if (navigator.share) await navigator.share({ title: 'Med Easy Result', text });
       else { await navigator.clipboard.writeText(text); toast('✓ Copied to clipboard!'); }
     } catch { /* user cancelled */ }
   };
@@ -52,7 +202,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
   return (
     <main className="screen" role="main"
       style={{ justifyContent: 'flex-start', paddingTop: '28px', paddingBottom: '110px' }}
-      aria-label="Medicine label results"
+      aria-label={isPresc ? 'Prescription results' : 'Medicine label results'}
     >
       <div className="orb orb-gold"   style={{ top: '-130px', right: '-130px', width: '360px', height: '360px' }} aria-hidden />
       <div className="orb orb-violet" style={{ bottom: '-80px', left: '-80px', width: '280px', height: '280px' }} aria-hidden />
@@ -60,82 +210,81 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
       <div aria-live="polite" className="sr-only">{speechText}</div>
 
       <div style={{ width: '100%', maxWidth: '480px' }}>
-
-        {/* Header row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
-          <div>
-            <h1 className="display gradient-text" style={{ fontSize: '38px', lineHeight: 1 }}>Results</h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-              {selectedLang.code !== 'en' && (
-                <span style={{ fontSize: '12px', color: 'var(--gold)', fontWeight: 600 }}>
-                  {selectedLang.flag} {selectedLang.name}
-                </span>
-              )}
-              {result.cached && (
-                <span style={{ fontSize: '11px', color: 'var(--text3)' }}>⚡ cached</span>
-              )}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <div style={{
-              padding: '5px 12px', borderRadius: '20px', fontSize: '13px', fontWeight: 700,
-              background: conf.bg, border: `1px solid ${conf.border}`, color: conf.color,
-            }}>{conf.label}</div>
-            <button className="btn-icon" onClick={onHome} aria-label="Go home" style={{ width: '40px', height: '40px' }}>
-              <span style={{ fontSize: '16px' }}>🏠</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Drug name hero card */}
-        <div className="card-gradient-border slide-up" style={{ marginBottom: '12px', animationDelay: '0s' }}>
-          <div className="inner" style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-            {thumbnail ? (
-              <img src={`data:image/jpeg;base64,${thumbnail}`} alt="Scanned label"
-                style={{ width: '68px', height: '68px', borderRadius: '12px', objectFit: 'cover', flexShrink: 0 }} />
-            ) : (
-              <div style={{ width: '68px', height: '68px', borderRadius: '12px', background: 'var(--gold-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', flexShrink: 0 }}>💊</div>
-            )}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '4px', fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase' }}>Identified Medicine</div>
-              <div style={{ fontSize: '22px', fontWeight: 700, color: 'var(--gold)', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {result.drugName}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Result cards */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-          {RESULT_CARDS.slice(1).map((card, i) => (
-            <article
-              key={card.key}
-              className="glass-strong slide-up"
-              aria-label={card.ariaLabel}
-              style={{ animationDelay: `${i * 0.1 + 0.1}s`, display: 'flex', gap: '14px', alignItems: 'stretch' }}
-            >
-              <div className="card-accent" style={{ background: card.color }} aria-hidden />
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px' }}>
-                  <span aria-hidden style={{ fontSize: '18px' }}>{card.icon}</span>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: card.color, letterSpacing: '1.5px', textTransform: 'uppercase' }}>
-                    {card.label}
-                  </span>
+        {isPresc ? (
+          <PrescriptionResultsView result={result as PrescriptionResult} selectedLang={selectedLang} onHome={onHome} />
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+              <div>
+                <h1 className="display gradient-text" style={{ fontSize: '38px', lineHeight: 1 }}>Results</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                  {selectedLang.code !== 'en' && (
+                    <span style={{ fontSize: '12px', color: 'var(--gold)', fontWeight: 600 }}>
+                      {selectedLang.flag} {selectedLang.name}
+                    </span>
+                  )}
+                  {result.cached && (
+                    <span style={{ fontSize: '11px', color: 'var(--text3)' }}>⚡ cached</span>
+                  )}
                 </div>
-                <p style={{ fontSize: '17px', lineHeight: 1.65, color: 'var(--text1)', margin: 0 }}>
-                  {result[card.key] ?? 'Not found'}
-                </p>
               </div>
-            </article>
-          ))}
-        </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div style={{
+                  padding: '5px 12px', borderRadius: '20px', fontSize: '13px', fontWeight: 700,
+                  background: conf.bg, border: `1px solid ${conf.border}`, color: conf.color,
+                }}>{conf.label}</div>
+                <button className="btn-icon" onClick={onHome} aria-label="Go home" style={{ width: '40px', height: '40px' }}>
+                  <span style={{ fontSize: '16px' }}>🏠</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="card-gradient-border slide-up" style={{ marginBottom: '12px', animationDelay: '0s' }}>
+              <div className="inner" style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                {thumbnail ? (
+                  <img src={`data:image/jpeg;base64,${thumbnail}`} alt="Scanned label"
+                    style={{ width: '68px', height: '68px', borderRadius: '12px', objectFit: 'cover', flexShrink: 0 }} />
+                ) : (
+                  <div style={{ width: '68px', height: '68px', borderRadius: '12px', background: 'var(--gold-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', flexShrink: 0 }}>💊</div>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '4px', fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase' }}>Identified Medicine</div>
+                  <div style={{ fontSize: '22px', fontWeight: 700, color: 'var(--gold)', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {(result as ScanResult).drugName}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+              {RESULT_CARDS.slice(1).map((card, i) => (
+                <article
+                  key={card.key}
+                  className="glass-strong slide-up"
+                  aria-label={card.ariaLabel}
+                  style={{ animationDelay: `${i * 0.1 + 0.1}s`, display: 'flex', gap: '14px', alignItems: 'stretch' }}
+                >
+                  <div className="card-accent" style={{ background: card.color }} aria-hidden />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px' }}>
+                      <span aria-hidden style={{ fontSize: '18px' }}>{card.icon}</span>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: card.color, letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+                        {card.label}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '17px', lineHeight: 1.65, color: 'var(--text1)', margin: 0 }}>
+                      {(result as ScanResult)[card.key] ?? 'Not found'}
+                    </p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Action buttons */}
         <div className="glass slide-up" style={{ animationDelay: '0.45s', padding: '14px' }}>
-          {/* Row 1: TTS + Share */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '9px', marginBottom: '9px' }}>
-            {/* Local language audio button */}
             <button
               onClick={() => (isSpeaking || isLoadingBhashini) ? onStop() : onSpeak(speechText, selectedLang.code)}
               className={`btn-action ${isSpeaking ? 'ring-anim' : ''}`}
@@ -153,7 +302,6 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
               <span style={{ fontSize: '13px' }}>{ttsLabel}</span>
             </button>
 
-            {/* Share */}
             <button
               onClick={handleShare}
               className="btn-action"
@@ -165,10 +313,9 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
             </button>
           </div>
 
-          {/* Row 2: Scan Again + Home */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '9px' }}>
             <button onClick={onRescan} className="btn-action"
-              aria-label="Scan another label"
+              aria-label="Scan another"
               style={{ background: 'rgba(139,92,246,.1)', color: '#A78BFA', border: '1.5px solid rgba(139,92,246,.3)' }}>
               <span aria-hidden style={{ fontSize: '18px' }}>📷</span>
               <span style={{ fontSize: '13px' }}>Scan Again</span>
@@ -182,7 +329,6 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
           </div>
         </div>
 
-        {/* Disclaimer */}
         <p style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text3)', lineHeight: 1.5, marginTop: '14px' }}>
           ⚕️ For informational purposes only. Always consult a doctor or pharmacist.
         </p>

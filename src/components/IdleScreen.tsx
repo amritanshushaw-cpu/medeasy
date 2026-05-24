@@ -1,8 +1,8 @@
 import React from 'react';
-import { LANGUAGES, Language } from '../types';
+import { LANGUAGES, Language, ScanMode } from '../types';
 
 interface IdleScreenProps {
-  onStart: () => void;
+  onStart: (mode: ScanMode) => void;
   selectedLang: Language;
   onLangChange: (lang: Language) => void;
   historyCount: number;
@@ -22,23 +22,20 @@ export const IdleScreen: React.FC<IdleScreenProps> = ({
   <main className="screen" role="main"
     style={{ justifyContent: 'space-between', paddingTop: '44px', paddingBottom: '32px' }}>
 
-    {/* Ambient orbs */}
     <div className="orb orb-gold"   style={{ top: '-160px', right: '-120px', width: '420px', height: '420px' }} aria-hidden />
     <div className="orb orb-violet" style={{ bottom: '-120px', left: '-100px', width: '360px', height: '360px' }} aria-hidden />
     <div className="orb orb-cyan"   style={{ top: '38%', left: '-60px', width: '180px', height: '180px' }} aria-hidden />
 
-    {/* Top bar */}
     <div style={{ width: '100%', maxWidth: '480px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '22px' }}>💊</span>
-          <span className="display gradient-text" style={{ fontSize: '26px' }}>MediScan</span>
+          <span style={{ fontSize: '22px' }}>🏥</span>
+          <span className="display gradient-text" style={{ fontSize: '26px' }}>Med Easy</span>
         </div>
         <div className="india-bar" style={{ width: '80px', marginTop: '5px' }} />
       </div>
 
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-        {/* Hackathon badge */}
         <div style={{
           padding: '5px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 700,
           background: 'rgba(139,92,246,.15)', border: '1px solid rgba(139,92,246,.35)',
@@ -60,17 +57,16 @@ export const IdleScreen: React.FC<IdleScreenProps> = ({
       </div>
     </div>
 
-    {/* Hero section */}
     <div style={{ textAlign: 'center', width: '100%', maxWidth: '440px' }}>
       <div className="float-anim" style={{ marginBottom: '24px' }}>
-        <div aria-label="Pill icon" style={{
+        <div aria-label="Medical icon" style={{
           width: '128px', height: '128px', borderRadius: '36px', margin: '0 auto',
           background: 'linear-gradient(135deg, rgba(245,158,11,.2), rgba(245,158,11,.05))',
           border: '1.5px solid rgba(245,158,11,.25)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: '60px', position: 'relative', boxShadow: '0 0 60px rgba(245,158,11,.12)',
         }}>
-          💊
+          🏥
           <div aria-hidden style={{
             position: 'absolute', inset: '-10px', borderRadius: '46px',
             border: '1px solid rgba(245,158,11,.1)',
@@ -83,16 +79,15 @@ export const IdleScreen: React.FC<IdleScreenProps> = ({
       </div>
 
       <h1 className="display gradient-text" style={{ fontSize: '64px', marginBottom: '6px', lineHeight: 1 }}>
-        MediScan
+        Med Easy
       </h1>
       <p style={{ fontSize: '18px', color: 'var(--text2)', lineHeight: 1.65, marginBottom: '6px' }}>
-        Scan any medicine label.
+        Scan medicine labels &amp; prescriptions.
       </p>
       <p style={{ fontSize: '18px', color: 'var(--text1)', lineHeight: 1.65, marginBottom: '28px', fontWeight: 600 }}>
-        Understand it in <span style={{ color: 'var(--gold)' }}>your language</span>.
+        Understand in <span style={{ color: 'var(--gold)' }}>your language</span>.
       </p>
 
-      {/* Feature grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '8px', marginBottom: '28px' }}>
         {FEATURES.map(f => (
           <div key={f.label} className="glass" style={{ padding: '12px 8px', textAlign: 'center' }}>
@@ -102,23 +97,33 @@ export const IdleScreen: React.FC<IdleScreenProps> = ({
         ))}
       </div>
 
-      {/* CTA */}
-      <button
-        className="btn-primary"
-        onClick={onStart}
-        aria-label="Open camera to scan a medicine label"
-        style={{ marginBottom: '12px', fontSize: '21px', minHeight: '66px', borderRadius: '20px' }}
-      >
-        <span aria-hidden style={{ fontSize: '26px' }}>📷</span>
-        Scan a Label
-      </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '12px' }}>
+        <button
+          className="btn-primary"
+          onClick={() => onStart('label')}
+          aria-label="Open camera to scan a medicine label"
+          style={{ fontSize: '21px', minHeight: '66px', borderRadius: '20px' }}
+        >
+          <span aria-hidden style={{ fontSize: '26px' }}>💊</span>
+          Scan Medicine Label
+        </button>
+
+        <button
+          className="btn-secondary"
+          onClick={() => onStart('prescription')}
+          aria-label="Open camera to scan a prescription"
+          style={{ fontSize: '21px', minHeight: '66px', borderRadius: '20px' }}
+        >
+          <span aria-hidden style={{ fontSize: '26px' }}>📋</span>
+          Scan Prescription
+        </button>
+      </div>
 
       <p style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '28px' }}>
         🔒 Photos are never stored or shared
       </p>
     </div>
 
-    {/* Language selector */}
     <div style={{ width: '100%', maxWidth: '480px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
         <span style={{ fontSize: '12px', color: 'var(--text3)', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: 700 }}>

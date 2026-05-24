@@ -1,7 +1,7 @@
 {
-  "name": "MediScan – Medicine Label Translator",
-  "short_name": "MediScan",
-  "description": "Scan medicine labels and get plain-English explanations",
+  "name": "Med Easy – Medicine & Prescription Reader",
+  "short_name": "Med Easy",
+  "description": "Scan medicine labels and prescriptions. Get text and audio in 12+ Indian languages.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",

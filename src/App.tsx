@@ -7,12 +7,10 @@ import { ProcessingScreen } from './components/ProcessingScreen';
 import { ResultsScreen }    from './components/ResultsScreen';
 import { ErrorScreen }      from './components/ErrorScreen';
 import { HistoryScreen }    from './components/HistoryScreen';
-import type { Screen, ScanResult, HistoryItem, Language } from './types';
+import type { Screen, ScanResult, PrescriptionResult, ResultData, HistoryItem, Language, ScanMode } from './types';
 import { LANGUAGES } from './types';
 import './styles/global.css';
 
-// FIXED: use full-image hash (via SubtleCrypto) to prevent cache collisions.
-// Previously used b64.slice(0,300) which is identical JPEG header bytes across all photos.
 async function computeKey(b64: string, lang: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(b64 + '|' + lang);
@@ -21,20 +19,22 @@ async function computeKey(b64: string, lang: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
 }
 
-const scanCache = new Map<string, ScanResult>();
+const scanCache = new Map<string, ResultData>();
 
 const App: React.FC = () => {
   const [screen,       setScreen]       = useState<Screen>('idle');
-  const [result,       setResult]       = useState<ScanResult | null>(null);
+  const [result,       setResult]       = useState<ResultData | null>(null);
   const [errorMsg,     setErrorMsg]     = useState('');
   const [history,      setHistory]      = useState<HistoryItem[]>([]);
   const [selectedLang, setSelectedLang] = useState<Language>(LANGUAGES[0]);
   const [thumbnail,    setThumbnail]    = useState<string | undefined>();
+  const [scanMode,     setScanMode]     = useState<ScanMode>('label');
 
   const camera = useCamera();
   const tts    = useTTS();
 
-  const handleStart = useCallback(async () => {
+  const handleStart = useCallback(async (mode: ScanMode) => {
+    setScanMode(mode);
     try { await camera.startStream(); setScreen('camera'); }
     catch { setErrorMsg('Camera access denied. Please allow camera permission.'); setScreen('error'); }
   }, [camera]);
@@ -44,12 +44,10 @@ const App: React.FC = () => {
     camera.stopStream();
     if (!b64) { setErrorMsg('Could not capture image. Please try again.'); setScreen('error'); return; }
 
-    // Save compressed thumbnail for history display
     const thumb = b64.length > 60000 ? b64.slice(0, 60000) : b64;
     setScreen('processing');
     tts.stop();
 
-    // Full SHA-256 hash to prevent any cache collision
     const key = await computeKey(b64, selectedLang.code);
 
     if (scanCache.has(key)) {
@@ -60,16 +58,24 @@ const App: React.FC = () => {
     }
 
     try {
-      const res = await fetch('/api/scan', {
+      const endpoint = scanMode === 'prescription' ? '/api/scan-prescription' : '/api/scan';
+      const res = await fetch(endpoint, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ image: b64, language: selectedLang.code }),
       });
 
-      const data = await res.json() as ScanResult & { error?: string };
+      const data = await res.json();
+
       if (!res.ok || data.error) throw new Error(data.error ?? `Server error ${res.status}`);
 
-      const final: ScanResult = { ...data, timestamp: Date.now(), language: selectedLang.code };
+      let final: ResultData;
+      if (scanMode === 'prescription') {
+        final = { ...data as PrescriptionResult, timestamp: Date.now(), language: selectedLang.code, scanMode: 'prescription' };
+      } else {
+        final = { ...data as ScanResult, timestamp: Date.now(), language: selectedLang.code, scanMode: 'label' };
+      }
+
       scanCache.set(key, final);
 
       setResult(final);
@@ -83,7 +89,7 @@ const App: React.FC = () => {
       setErrorMsg(err instanceof Error ? err.message : 'Something went wrong.');
       setScreen('error');
     }
-  }, [camera, tts, selectedLang]);
+  }, [camera, tts, selectedLang, scanMode]);
 
   const handleCameraBack = useCallback(() => { camera.stopStream(); setScreen('idle'); }, [camera]);
 
@@ -99,11 +105,16 @@ const App: React.FC = () => {
   }, [camera, tts]);
 
   const handleViewHistory  = useCallback(() => { tts.stop(); setScreen('history' as Screen); }, [tts]);
+
   const handleSelectHistory = useCallback((item: HistoryItem) => {
-    setResult(item.result); setThumbnail(item.thumbnail);
+    setResult(item.result);
+    setThumbnail(item.thumbnail);
+    const mode = item.result.scanMode || 'label';
+    setScanMode(mode as ScanMode);
     setSelectedLang(LANGUAGES.find(l => l.code === item.result.language) || LANGUAGES[0]);
     setScreen('results');
   }, []);
+
   const handleClearHistory = useCallback(() => { setHistory([]); setScreen('idle'); }, []);
 
   if (screen === ('history' as Screen)) {
@@ -116,7 +127,7 @@ const App: React.FC = () => {
     case 'camera':
       return <CameraScreen videoRef={camera.videoRef} canvasRef={camera.canvasRef} onCapture={handleCapture} onBack={handleCameraBack} />;
     case 'processing':
-      return <ProcessingScreen language={selectedLang.code} />;
+      return <ProcessingScreen language={selectedLang.code} scanMode={scanMode} />;
     case 'results':
       return result ? (
         <ResultsScreen

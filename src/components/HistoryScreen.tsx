@@ -1,11 +1,27 @@
 import React from 'react';
-import { HistoryItem, CONFIDENCE_STYLE } from '../types';
+import type { HistoryItem, ScanResult, PrescriptionResult } from '../types';
+import { CONFIDENCE_STYLE } from '../types';
 
 interface HistoryScreenProps {
   history: HistoryItem[];
   onSelect: (item: HistoryItem) => void;
   onBack: () => void;
   onClear: () => void;
+}
+
+function getItemTitle(result: ScanResult | PrescriptionResult): string {
+  if ('patientName' in result) return result.patientName || 'Prescription Scan';
+  return result.drugName || 'Label Scan';
+}
+
+function getItemSubtitle(result: ScanResult | PrescriptionResult): string {
+  if ('diagnosis' in result && result.diagnosis) return result.diagnosis;
+  if ('dosage' in result && result.dosage) return result.dosage;
+  return '';
+}
+
+function getItemIcon(result: ScanResult | PrescriptionResult): string {
+  return 'patientName' in result ? '📋' : '💊';
 }
 
 export const HistoryScreen: React.FC<HistoryScreenProps> = ({ history, onSelect, onBack, onClear }) => (
@@ -34,37 +50,44 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ history, onSelect,
       {history.length === 0 ? (
         <div style={{ textAlign:'center', padding:'60px 20px' }}>
           <div style={{ fontSize:'56px', marginBottom:'16px' }}>📋</div>
-          <p style={{ fontSize:'18px', color:'rgba(240,238,248,.4)' }}>No scans yet.<br />Scan a label to see your history here.</p>
+          <p style={{ fontSize:'18px', color:'rgba(240,238,248,.4)' }}>No scans yet.<br />Scan a label or prescription to see your history here.</p>
         </div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
           {history.map((item, i) => {
             const conf = CONFIDENCE_STYLE[item.result.confidence] ?? CONFIDENCE_STYLE.low;
             const date = new Date(item.timestamp);
+            const title = getItemTitle(item.result);
+            const subtitle = getItemSubtitle(item.result);
+            const icon = getItemIcon(item.result);
             return (
               <button
                 key={item.id}
                 className="history-card slide-up"
                 onClick={() => onSelect(item)}
-                aria-label={`View scan of ${item.result.drugName}`}
+                aria-label={`View scan of ${title}`}
                 style={{ animationDelay:`${i * 0.07}s`, textAlign:'left', background:'none', fontFamily:'inherit', width:'100%' }}
               >
-                {item.thumbnail && (
+                {item.thumbnail ? (
                   <img
                     src={`data:image/jpeg;base64,${item.thumbnail}`}
                     alt=""
                     aria-hidden
                     style={{ width:'52px', height:'52px', borderRadius:'10px', objectFit:'cover', flexShrink:0 }}
                   />
+                ) : (
+                  <div style={{ width:'52px', height:'52px', borderRadius:'10px', background:'var(--gold-dim)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'24px', flexShrink:0 }}>
+                    {icon}
+                  </div>
                 )}
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:'17px', fontWeight:700, color:'#F0EEF8', marginBottom:'3px',
                     overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                    {item.result.drugName}
+                    {title}
                   </div>
                   <div style={{ fontSize:'13px', color:'rgba(240,238,248,.45)',
                     overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                    {item.result.dosage}
+                    {subtitle}
                   </div>
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'6px', flexShrink:0 }}>
