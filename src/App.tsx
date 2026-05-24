@@ -24,6 +24,7 @@ async function computeKey(b64: string, lang: string): Promise<string> {
 }
 
 const scanCache = new Map<string, ResultData>();
+const reportCache = new Map<string, AnalysisResult>();
 
 const App: React.FC = () => {
   const [screen,       setScreen]       = useState<Screen>('idle');
@@ -138,28 +139,34 @@ const App: React.FC = () => {
     setScreen('reportProcessing' as Screen);
 
     try {
-      // Convert file to base64
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64 = (reader.result as string).split(',')[1];
-        
-        // Create thumbnail preview
-        const thumb = base64.length > 60000 ? base64.slice(0, 60000) : base64;
-        setReportThumbnail(thumb);
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = (reader.result as string).split(',')[1];
+          if (result) resolve(result);
+          else reject(new Error('Failed to read file.'));
+        };
+        reader.onerror = () => reject(new Error('Failed to read file.'));
+        reader.readAsDataURL(file);
+      });
 
-        try {
-          // Call analysis API
-          const analysisData = await analyzeReport(file.type, base64);
-          setAnalysisResult(analysisData);
-          setScreen('reportAnalyzer' as Screen);
-        } catch (err: unknown) {
-          setErrorMsg(err instanceof Error ? err.message : 'Failed to analyze report. Please try again.');
-          setScreen('error');
-        }
-      };
-      reader.readAsDataURL(file);
+      const thumb = base64.length > 60000 ? base64.slice(0, 60000) : base64;
+      setReportThumbnail(thumb);
+
+      const key = await computeKey(base64, 'en');
+      if (reportCache.has(key)) {
+        setAnalysisResult(reportCache.get(key)!);
+        setScreen('reportAnalyzer' as Screen);
+        return;
+      }
+
+      const analysisData = await analyzeReport(file.type, base64);
+      reportCache.set(key, analysisData);
+
+      setAnalysisResult(analysisData);
+      setScreen('reportAnalyzer' as Screen);
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Failed to read file.');
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to analyze report. Please try again.');
       setScreen('error');
     }
   }, []);
