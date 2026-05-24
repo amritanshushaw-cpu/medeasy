@@ -7,6 +7,7 @@ interface IdleScreenProps {
   onLangChange: (lang: Language) => void;
   historyCount: number;
   onViewHistory: () => void;
+  onAnalyzeReport?: () => void;
 }
 
 const FEATURES = [
@@ -17,7 +18,7 @@ const FEATURES = [
 ];
 
 export const IdleScreen: React.FC<IdleScreenProps> = ({
-  onStart, selectedLang, onLangChange, historyCount, onViewHistory,
+  onStart, selectedLang, onLangChange, historyCount, onViewHistory, onAnalyzeReport,
 }) => (
   <main className="screen" role="main"
     style={{ justifyContent: 'space-between', paddingTop: '44px', paddingBottom: '32px' }}>
@@ -117,6 +118,18 @@ export const IdleScreen: React.FC<IdleScreenProps> = ({
           <span aria-hidden style={{ fontSize: '26px' }}>📋</span>
           Scan Prescription
         </button>
+
+        {onAnalyzeReport && (
+          <button
+            className="btn-secondary"
+            onClick={onAnalyzeReport}
+            aria-label="Analyze a medical report from file"
+            style={{ fontSize: '21px', minHeight: '66px', borderRadius: '20px' }}
+          >
+            <span aria-hidden style={{ fontSize: '26px' }}>📊</span>
+            Analyze Report
+          </button>
+        )}
       </div>
 
       <p style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '28px' }}>

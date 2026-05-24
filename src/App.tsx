@@ -7,8 +7,12 @@ import { ProcessingScreen } from './components/ProcessingScreen';
 import { ResultsScreen }    from './components/ResultsScreen';
 import { ErrorScreen }      from './components/ErrorScreen';
 import { HistoryScreen }    from './components/HistoryScreen';
-import type { Screen, ScanResult, PrescriptionResult, ResultData, HistoryItem, Language, ScanMode } from './types';
+import { ReportUploadScreen } from './components/ReportUploadScreen';
+import { ReportProcessingScreen } from './components/ReportProcessingScreen';
+import { ReportAnalyzer }   from './components/ReportAnalyzer';
+import type { Screen, ScanResult, PrescriptionResult, ResultData, HistoryItem, Language, ScanMode, AnalysisResult } from './types';
 import { LANGUAGES } from './types';
+import { analyzeReport } from './api/reportAnalyzer';
 import './styles/global.css';
 
 async function computeKey(b64: string, lang: string): Promise<string> {
@@ -29,6 +33,9 @@ const App: React.FC = () => {
   const [selectedLang, setSelectedLang] = useState<Language>(LANGUAGES[0]);
   const [thumbnail,    setThumbnail]    = useState<string | undefined>();
   const [scanMode,     setScanMode]     = useState<ScanMode>('label');
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [reportThumbnail, setReportThumbnail] = useState<string | undefined>();
+  const [uploadedFileName, setUploadedFileName] = useState<string>('');
 
   const camera = useCamera();
   const tts    = useTTS();
@@ -117,13 +124,61 @@ const App: React.FC = () => {
 
   const handleClearHistory = useCallback(() => { setHistory([]); setScreen('idle'); }, []);
 
+  // Report Analyzer Handlers
+  const handleOpenReportAnalyzer = useCallback(() => {
+    setAnalysisResult(null);
+    setReportThumbnail(undefined);
+    setUploadedFileName('');
+    setErrorMsg('');
+    setScreen('reportUpload' as Screen);
+  }, []);
+
+  const handleReportUpload = useCallback(async (file: File) => {
+    setUploadedFileName(file.name);
+    setScreen('reportProcessing' as Screen);
+
+    try {
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = (reader.result as string).split(',')[1];
+        
+        // Create thumbnail preview
+        const thumb = base64.length > 60000 ? base64.slice(0, 60000) : base64;
+        setReportThumbnail(thumb);
+
+        try {
+          // Call analysis API
+          const analysisData = await analyzeReport(file.type, base64);
+          setAnalysisResult(analysisData);
+          setScreen('reportAnalyzer' as Screen);
+        } catch (err: unknown) {
+          setErrorMsg(err instanceof Error ? err.message : 'Failed to analyze report. Please try again.');
+          setScreen('error');
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to read file.');
+      setScreen('error');
+    }
+  }, []);
+
+  const handleReportHome = useCallback(() => {
+    setAnalysisResult(null);
+    setReportThumbnail(undefined);
+    setUploadedFileName('');
+    setErrorMsg('');
+    setScreen('idle');
+  }, []);
+
   if (screen === ('history' as Screen)) {
     return <HistoryScreen history={history} onSelect={handleSelectHistory} onBack={() => setScreen('idle')} onClear={handleClearHistory} />;
   }
 
   switch (screen) {
     case 'idle':
-      return <IdleScreen onStart={handleStart} selectedLang={selectedLang} onLangChange={setSelectedLang} historyCount={history.length} onViewHistory={handleViewHistory} />;
+      return <IdleScreen onStart={handleStart} selectedLang={selectedLang} onLangChange={setSelectedLang} historyCount={history.length} onViewHistory={handleViewHistory} onAnalyzeReport={handleOpenReportAnalyzer} />;
     case 'camera':
       return <CameraScreen videoRef={camera.videoRef} canvasRef={camera.canvasRef} onCapture={handleCapture} onBack={handleCameraBack} scanMode={scanMode} />;
     case 'processing':
@@ -136,6 +191,14 @@ const App: React.FC = () => {
           onRescan={handleRescan} onHome={handleHome}
           selectedLang={selectedLang} thumbnail={thumbnail}
         />
+      ) : null;
+    case 'reportUpload':
+      return <ReportUploadScreen onUpload={handleReportUpload} onCancel={handleReportHome} />;
+    case 'reportProcessing':
+      return <ReportProcessingScreen fileName={uploadedFileName} />;
+    case 'reportAnalyzer':
+      return analysisResult ? (
+        <ReportAnalyzer result={analysisResult} onHome={handleReportHome} thumbnail={reportThumbnail} />
       ) : null;
     case 'error':
       return <ErrorScreen message={errorMsg} onRetry={handleRescan} onHome={handleHome} />;

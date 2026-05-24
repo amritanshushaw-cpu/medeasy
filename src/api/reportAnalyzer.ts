@@ -1,138 +1,138 @@
 import type { AnalysisResult } from '../types';
 
 /**
- * Mock API function to analyze medical reports
- * Replace this with your actual LLM/AI backend API call
+ * Analyze medical reports using your LLM backend
+ * Currently uses mock data. Replace with your actual API call.
  *
- * @param fileType - MIME type of the uploaded file
+ * @param fileType - MIME type of uploaded file
  * @param base64Data - Base64 encoded file data
- * @returns Promise<AnalysisResult> - Analyzed report data
- *
- * @example
- * // To integrate with a real API:
- * // 1. Replace the mock response with a fetch call to your backend
- * // 2. Send the base64Data to your LLM/AI service
- * // 3. Parse and structure the response according to AnalysisResult interface
+ * @returns Promise<AnalysisResult> - Analyzed medical report
  */
 export async function analyzeReport(
-  fileType: string,
-  base64Data: string
+  _fileType: string,
+  _base64Data: string
 ): Promise<AnalysisResult> {
-  // Simulate network delay (remove in production)
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-
-  // TODO: Replace with your actual API call:
-  // const response = await fetch('https://your-api.com/analyze', {
+  // TODO: Replace this with your actual API endpoint
+  // Example using Claude API with vision capabilities:
+  //
+  // const response = await fetch('https://api.anthropic.com/v1/messages', {
   //   method: 'POST',
   //   headers: {
   //     'Content-Type': 'application/json',
-  //     'Authorization': `Bearer ${YOUR_API_KEY}`,
+  //     'x-api-key': import.meta.env.VITE_CLAUDE_API_KEY,
   //   },
   //   body: JSON.stringify({
-  //     fileType,
-  //     fileData: base64Data,
+  //     model: 'claude-3-5-sonnet-20241022',
+  //     max_tokens: 1024,
+  //     messages: [{
+  //       role: 'user',
+  //       content: [
+  //         {
+  //           type: 'image',
+  //           source: { type: 'base64', media_type: fileType, data: base64Data },
+  //         },
+  //         {
+  //           type: 'text',
+  //           text: 'Analyze this medical report and provide: 1) Plain English summary, 2) Key metrics with status (normal/high/low), 3) Actionable recommendations. Format as JSON.',
+  //         },
+  //       ],
+  //     }],
   //   }),
   // });
-  //
-  // if (!response.ok) {
-  //   throw new Error(`API error: ${response.statusText}`);
-  // }
   //
   // const data = await response.json();
   // return parseAnalysisResponse(data);
 
-  // Mock response for demonstration
+  // For now, simulate network delay and return mock data
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+
   return generateMockAnalysis();
 }
 
 /**
- * Generate a mock analysis result for demonstration
- * This shows the expected data structure
+ * Generate mock analysis for demonstration
  */
 function generateMockAnalysis(): AnalysisResult {
   return {
     summary:
-      'This blood test report shows generally good health with a few metrics that may warrant follow-up with your physician. Your glucose levels are slightly elevated, which could indicate early signs of prediabetes, but all other values are within normal ranges. The lipid panel shows healthy cholesterol levels, suggesting good cardiovascular health.',
+      'This blood test report shows generally good health with a few metrics that need attention. Your hemoglobin levels are normal, indicating good oxygen-carrying capacity. However, your fasting glucose is slightly elevated at 108 mg/dL, which could suggest prediabetic tendencies. All lipid panels are within healthy ranges, showing good cardiovascular health. Total cholesterol and HDL levels are excellent.',
     keyMetrics: [
       {
         name: 'Hemoglobin',
         value: '14.2 g/dL',
-        status: 'normal',
+        status: 'normal' as const,
       },
       {
         name: 'Glucose (Fasting)',
         value: '108 mg/dL',
-        status: 'high',
+        status: 'high' as const,
       },
       {
         name: 'Total Cholesterol',
         value: '185 mg/dL',
-        status: 'normal',
+        status: 'normal' as const,
       },
       {
         name: 'HDL Cholesterol',
         value: '52 mg/dL',
-        status: 'normal',
+        status: 'normal' as const,
       },
       {
         name: 'LDL Cholesterol',
         value: '110 mg/dL',
-        status: 'normal',
+        status: 'normal' as const,
       },
       {
         name: 'Triglycerides',
         value: '95 mg/dL',
-        status: 'normal',
+        status: 'normal' as const,
       },
       {
         name: 'Creatinine',
         value: '0.9 mg/dL',
-        status: 'normal',
+        status: 'normal' as const,
       },
       {
         name: 'White Blood Cells',
         value: '7.2 K/uL',
-        status: 'normal',
+        status: 'normal' as const,
       },
     ],
     nextSteps: [
-      'Schedule a follow-up appointment with your doctor to discuss the elevated fasting glucose level',
-      'Consider lifestyle modifications including increased physical activity (150 minutes per week) and dietary changes',
-      'Reduce refined carbohydrate and sugar intake to help manage glucose levels',
-      'Maintain a healthy weight through balanced diet and regular exercise',
+      'Schedule a follow-up appointment with your doctor to discuss glucose levels and diabetes risk',
+      'Increase physical activity to at least 150 minutes of moderate exercise per week',
+      'Reduce refined carbohydrates and added sugars from your diet',
+      'Maintain a healthy weight through balanced nutrition',
       'Retest glucose levels in 3-6 months to monitor trends',
-      'Ask your doctor about diabetes risk assessment or prediabetes prevention program',
+      'Ask your doctor about dietary counseling or a prediabetes prevention program',
     ],
     timestamp: Date.now(),
   };
 }
 
 /**
- * Example parser for your actual API response
- * Adjust according to your backend API response structure
- *
- * @param apiResponse - Raw response from your API
- * @returns AnalysisResult - Parsed result
+ * Parse API response and convert to AnalysisResult format
+ * Customize this based on your API response structure
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function parseAnalysisResponse(apiResponse: any): AnalysisResult {
-  // This is an example - modify based on your actual API response format
+export function parseAnalysisResponse(
+  apiResponse: {
+    summary?: string;
+    metrics?: Array<{ name: string; value: string; status: 'normal' | 'high' | 'low' }>;
+    recommendations?: string[];
+  }
+): AnalysisResult {
   return {
-    summary: apiResponse.summary || '',
+    summary: apiResponse.summary || 'No summary available.',
     keyMetrics: Array.isArray(apiResponse.metrics)
-      ? apiResponse.metrics.map(
-          (m: {
-            name: string;
-            value: string;
-            status: 'normal' | 'high' | 'low';
-          }) => ({
-            name: m.name,
-            value: m.value,
-            status: m.status,
-          })
-        )
+      ? apiResponse.metrics.map((m) => ({
+          name: m.name,
+          value: m.value,
+          status: m.status as 'normal' | 'high' | 'low',
+        }))
       : [],
-    nextSteps: Array.isArray(apiResponse.steps) ? apiResponse.steps : [],
+    nextSteps: Array.isArray(apiResponse.recommendations)
+      ? apiResponse.recommendations
+      : [],
     timestamp: Date.now(),
   };
 }

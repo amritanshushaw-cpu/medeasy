@@ -1,6 +1,6 @@
 export type ScanMode = 'label' | 'prescription';
 
-export type Screen = 'idle' | 'camera' | 'processing' | 'results' | 'error';
+export type Screen = 'idle' | 'camera' | 'processing' | 'results' | 'error' | 'history' | 'reportUpload' | 'reportProcessing' | 'reportAnalyzer';
 
 export interface ScanResult {
   drugName: string;
