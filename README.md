@@ -421,12 +421,12 @@ Results are **SHA-256 cached** so re-uploading the same report returns instantly
 
 ## 🤝 Contributors
 
-| Name | Role | GitHub |
-|---|---|---|
-| **Amritanshu Shaw** | Full Stack Developer — Architecture, Backend, API, Deployment | [@amritanshushaw-cpu](https://github.com/amritanshushaw-cpu) |
-| **Shrinivas Ghosh** | AI & Integration — Groq Pipeline, Bhashini API, Language Support | [@devnivas](https://github.com/devnivas) |
-| **Saptak Sarathi Chakraborty** | Product & Design — UX, Accessibility, User Research | [@saptakgg](https://github.com/saptakgg) |
-| **Ritam Karmakar** | Full Stack Developer — Frontend, Backend | [@ritam07karmakar-prog](https://github.com/ritam07karmakar-prog) |
+| Name | GitHub |
+|---|---|
+| **Amritanshu Shaw** | [@amritanshushaw-cpu](https://github.com/amritanshushaw-cpu) |
+| **Shrinivas Ghosh** |  [@devnivas](https://github.com/devnivas) |
+| **Saptak Sarathi Chakraborty** | [@saptakgg](https://github.com/saptakgg) |
+| **Ritam Karmakar** | [@ritam07karmakar-prog](https://github.com/ritam07karmakar-prog) |
 
 ---
 
