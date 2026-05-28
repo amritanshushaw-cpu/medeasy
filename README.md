@@ -44,7 +44,6 @@ Every year, thousands of patients in India take wrong medicine doses or misunder
 | 📋 **Scan History** | Last 20 scans saved locally with thumbnails |
 | 📤 **Share Results** | Native share sheet or clipboard copy |
 | ⚡ **Smart Caching** | SHA-256 image hash prevents duplicate API calls (scan + report both cached) |
-| 📱 **PWA** | Installable on Android/iOS home screen, works offline (shell) |
 | ♿ **Accessible** | WCAG AA contrast, ARIA labels, 56px+ touch targets, Atkinson Hyperlegible font |
 
 ---
