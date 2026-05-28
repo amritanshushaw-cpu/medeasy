@@ -1,7 +1,7 @@
 <div align="center">
 
 # 🏥 MedEasy
-### AI-Powered Medicine Label & Prescription Reader for Bharat
+### AI-Powered Medicine Label, Prescription Reader and Report Analyzer for Bharat
 
 [![GitHub](https://img.shields.io/badge/GitHub-amritanshushaw--cpu%2Fmedeasy-181717?style=for-the-badge&logo=github)](https://github.com/amritanshushaw-cpu/medeasy)
 [![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?style=for-the-badge&logo=vercel)](https://vercel.com)
