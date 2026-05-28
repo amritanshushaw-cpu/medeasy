@@ -7,7 +7,7 @@
 [![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?style=for-the-badge&logo=vercel)](https://vercel.com)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
-**Scan any medicine label or prescription → Get plain-language explanation → Hear it spoken aloud in 12+ Indian languages**
+**Scan any medicine label, prescription and analyze report → Get plain-language explanation → Hear it spoken aloud in 12+ Indian languages**
 
 *Built for the 850M+ people in India who struggle to read medicine labels and prescriptions*
 
