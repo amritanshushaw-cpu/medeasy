@@ -10,8 +10,8 @@ function isRateLimited(ip) {
   e[0]++; return e[0] > 15;
 }
 
-function imageHash(b64) {
-  return createHash('sha256').update(b64).digest('hex');
+function imageHash(b64, lang) {
+  return createHash('sha256').update(b64 + '|' + lang).digest('hex');
 }
 
 const SYSTEM = `You are a medical report analyst for patients in India. Look at this medical report image very carefully.
@@ -53,13 +53,14 @@ module.exports = async function handler(req, res) {
 
   const body = req.body || {};
   const image = body.image;
+  const targetLang = body.language || 'en';
 
   if (!image || String(image).length < 100) return res.status(400).json({ error: 'Image required.' });
 
   const groqKey = process.env.GROQ_API_KEY;
   if (!groqKey) return res.status(500).json({ error: 'GROQ_API_KEY not set.' });
 
-  const key = imageHash(String(image));
+  const key = imageHash(String(image), targetLang);
   if (cache.has(key)) {
     return res.status(200).json(Object.assign({}, cache.get(key), { cached: true }));
   }
@@ -108,7 +109,7 @@ module.exports = async function handler(req, res) {
     }
     if (parsed.error) return res.status(422).json({ error: parsed.error });
 
-    const result = {
+    let result = {
       summary: parsed.summary || 'No summary could be extracted.',
       keyMetrics: Array.isArray(parsed.metrics)
         ? parsed.metrics.map(function(m) {
@@ -121,8 +122,25 @@ module.exports = async function handler(req, res) {
           })
         : [],
       nextSteps: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      language: 'en'
     };
+
+    if (targetLang !== 'en') {
+      const bhashiniKey    = process.env.BHASHINI_API_KEY;
+      const bhashiniUserId = process.env.BHASHINI_USER_ID;
+      if (bhashiniKey && bhashiniUserId) {
+        try { result = await translateWithBhashini(result, targetLang, bhashiniKey, bhashiniUserId); result.language = targetLang; }
+        catch (e) {
+          console.warn('Bhashini translate failed, fallback to Groq:', e.message);
+          try { result = await translateWithGroq(result, targetLang, groqKey); result.language = targetLang; }
+          catch (e2) { console.error('Groq translate failed:', e2.message); }
+        }
+      } else {
+        try { result = await translateWithGroq(result, targetLang, groqKey); result.language = targetLang; }
+        catch (e) { console.error('Groq translate failed:', e.message); }
+      }
+    }
 
     cache.set(key, result);
     if (cache.size > 500) cache.delete(cache.keys().next().value);
@@ -134,3 +152,89 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'Unexpected error: ' + (err && err.message || 'unknown') });
   }
 };
+
+async function translateWithBhashini(result, targetLang, apiKey, userId) {
+  const texts = [result.summary].concat(result.keyMetrics.map(function(m) { return m.name; })).concat(result.nextSteps);
+  const fieldCount = 1 + result.keyMetrics.length + result.nextSteps.length;
+
+  const pipelineRes = await fetch('https://meity-auth.ulcacontrib.org/ulca/apis/v0/model/getModelsPipeline', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'userID': userId, 'ulcaApiKey': apiKey },
+    body: JSON.stringify({
+      pipelineTasks: [{ taskType: 'translation', config: { language: { sourceLanguage: 'en', targetLanguage: targetLang } } }],
+      pipelineRequestConfig: { pipelineId: 'ai4bharat/argos-translate-translate' }
+    })
+  });
+
+  const pd = await pipelineRes.json();
+  const serviceId = pd.pipelineResponseConfig[0].config[0].serviceId;
+  const cbUrl     = pd.pipelineInferenceAPIEndPoint.callbackUrl;
+  const inferKey  = pd.pipelineInferenceAPIEndPoint.inferenceApiKey.value;
+
+  const trRes = await fetch(cbUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': inferKey },
+    body: JSON.stringify({
+      pipelineTasks: [{
+        taskType: 'translation',
+        config: { language: { sourceLanguage: 'en', targetLanguage: targetLang }, serviceId: serviceId },
+        input: texts.map(function(t) { return { source: t }; })
+      }],
+      inputData: { input: texts.map(function(t) { return { source: t }; }) }
+    })
+  });
+
+  const td = await trRes.json();
+  const outputs = td.pipelineResponse[0].output;
+  const translated = Object.assign({}, result);
+  translated.summary = (outputs[0] && outputs[0].target) || result.summary;
+  result.keyMetrics.forEach(function(m, i) {
+    const translatedName = (outputs[1 + i] && outputs[1 + i].target) || m.name;
+    translated.keyMetrics[i] = Object.assign({}, m, { name: translatedName });
+  });
+  const metricCount = result.keyMetrics.length;
+  result.nextSteps.forEach(function(s, i) {
+    const translatedStep = (outputs[1 + metricCount + i] && outputs[1 + metricCount + i].target) || s;
+    translated.nextSteps[i] = translatedStep;
+  });
+  return translated;
+}
+
+async function translateWithGroq(result, targetLang, groqKey) {
+  const langNames = { hi:'Hindi', bn:'Bengali', ta:'Tamil', te:'Telugu', mr:'Marathi', gu:'Gujarati', kn:'Kannada', ml:'Malayalam', pa:'Punjabi', or:'Odia', ur:'Urdu' };
+  const langName = langNames[targetLang] || targetLang;
+  const payload = {
+    summary: result.summary,
+    metrics: result.keyMetrics.map(function(m) { return { name: m.name, value: m.value, status: m.status }; }),
+    recommendations: result.nextSteps
+  };
+  const prompt = 'Translate all JSON string values to ' + langName + '. Return ONLY raw JSON, same structure, no markdown, no backticks.\nInput: ' + JSON.stringify(payload);
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + groqKey },
+    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 1200, temperature: 0.1, messages: [{ role: 'user', content: prompt }] })
+  });
+
+  const data = await res.json();
+  const raw = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+  if (!raw) throw new Error('Empty translation');
+  const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  const t = JSON.parse(match ? match[0] : cleaned);
+
+  const translated = Object.assign({}, result);
+  if (t.summary) translated.summary = t.summary;
+  if (Array.isArray(t.metrics)) {
+    translated.keyMetrics = result.keyMetrics.map(function(m, i) {
+      const tm = t.metrics[i] || {};
+      return Object.assign({}, m, { name: tm.name || m.name });
+    });
+  }
+  if (Array.isArray(t.recommendations)) {
+    translated.nextSteps = result.nextSteps.map(function(s, i) {
+      return t.recommendations[i] || s;
+    });
+  }
+  return translated;
+}

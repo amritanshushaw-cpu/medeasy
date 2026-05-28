@@ -63,7 +63,7 @@ const App: React.FC = () => {
       setScreen('reportProcessing' as Screen);
       setReportThumbnail(thumb);
 
-      const key = await computeKey(b64, 'en');
+      const key = await computeKey(b64, selectedLang.code);
 
       if (reportCache.has(key)) {
         setAnalysisResult(reportCache.get(key)!);
@@ -75,7 +75,7 @@ const App: React.FC = () => {
         const res = await fetch('/api/scan-report', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: b64 }),
+          body: JSON.stringify({ image: b64, language: selectedLang.code }),
         });
         const data = await res.json();
         if (!res.ok || data.error) throw new Error(data.error ?? `Server error ${res.status}`);
@@ -197,14 +197,14 @@ const App: React.FC = () => {
       const thumb = base64.length > 60000 ? base64.slice(0, 60000) : base64;
       setReportThumbnail(thumb);
 
-      const key = await computeKey(base64, 'en');
+      const key = await computeKey(base64, selectedLang.code);
       if (reportCache.has(key)) {
         setAnalysisResult(reportCache.get(key)!);
         setScreen('reportAnalyzer' as Screen);
         return;
       }
 
-      const analysisData = await analyzeReport(file.type, base64);
+      const analysisData = await analyzeReport(file.type, base64, selectedLang.code);
       reportCache.set(key, analysisData);
 
       setAnalysisResult(analysisData);
@@ -213,7 +213,7 @@ const App: React.FC = () => {
       setErrorMsg(err instanceof Error ? err.message : 'Failed to analyze report. Please try again.');
       setScreen('error');
     }
-  }, []);
+  }, [selectedLang]);
 
   const handleReportHome = useCallback(() => {
     setAnalysisResult(null);
