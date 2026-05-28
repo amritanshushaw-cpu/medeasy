@@ -1,4 +1,4 @@
-export type ScanMode = 'label' | 'prescription';
+export type ScanMode = 'label' | 'prescription' | 'report';
 
 export type Screen = 'idle' | 'camera' | 'processing' | 'results' | 'error' | 'history' | 'reportUpload' | 'reportProcessing' | 'reportAnalyzer';
 

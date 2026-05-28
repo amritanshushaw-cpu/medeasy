@@ -8,7 +8,15 @@ interface ProcessingScreenProps {
 
 export const ProcessingScreen: React.FC<ProcessingScreenProps> = ({ language, scanMode }) => {
   const isPrescription = scanMode === 'prescription';
-  const steps = isPrescription
+  const isReport = scanMode === 'report';
+  const steps = isReport
+    ? [
+        { icon: '📄', label: 'Reading report' },
+        { icon: '🔍', label: 'Extracting metrics' },
+        { icon: '📊', label: 'Analyzing values' },
+        { icon: '✨', label: 'Generating insights' },
+      ]
+    : isPrescription
     ? [
         { icon: '🔍', label: 'Reading prescription text' },
         { icon: '🧠', label: 'Decoding medical terms' },
@@ -23,7 +31,7 @@ export const ProcessingScreen: React.FC<ProcessingScreenProps> = ({ language, sc
       ];
 
   return (
-    <div className="screen" role="status" aria-live="polite" aria-label={isPrescription ? 'Processing your prescription' : 'Processing your medicine label'}>
+    <div className="screen" role="status" aria-live="polite" aria-label={isReport ? 'Analyzing your report' : isPrescription ? 'Processing your prescription' : 'Processing your medicine label'}>
       <div aria-hidden style={{ position:'absolute', top:'-140px', right:'-140px', width:'400px', height:'400px', borderRadius:'50%', pointerEvents:'none', background:'radial-gradient(circle, rgba(244,196,48,.07) 0%, transparent 70%)' }} />
       <div aria-hidden style={{ position:'absolute', bottom:'-100px', left:'-100px', width:'300px', height:'300px', borderRadius:'50%', pointerEvents:'none', background:'radial-gradient(circle, rgba(139,92,246,.07) 0%, transparent 70%)' }} />
 
@@ -37,15 +45,17 @@ export const ProcessingScreen: React.FC<ProcessingScreenProps> = ({ language, sc
           <div aria-hidden style={{
             position:'absolute', inset:0,
             display:'flex', alignItems:'center', justifyContent:'center', fontSize:'44px',
-          }}>{isPrescription ? '📋' : '💊'}</div>
+          }}>{isReport ? '📊' : isPrescription ? '📋' : '💊'}</div>
         </div>
 
         <h2 className="display" style={{ fontSize:'36px', color:'#F4C430', marginBottom:'12px' }}>
-          {isPrescription ? 'Reading Prescription' : 'Reading Label'}
+          {isReport ? 'Analyzing Report' : isPrescription ? 'Reading Prescription' : 'Reading Label'}
         </h2>
 
         <p style={{ fontSize:'18px', color:'rgba(240,238,248,.5)', marginBottom:'32px', lineHeight:1.5 }}>
-          {isPrescription
+          {isReport
+            ? 'Processing medical data'
+            : isPrescription
             ? 'Decoding medical details'
             : (language && language !== 'en' ? 'Translating to your language' : 'Translating to simple words')}
           <span className="dot1">.</span><span className="dot2">.</span><span className="dot3">.</span>

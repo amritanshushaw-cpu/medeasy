@@ -8,6 +8,7 @@ interface IdleScreenProps {
   historyCount: number;
   onViewHistory: () => void;
   onAnalyzeReport?: () => void;
+  onScanReport?: () => void;
 }
 
 const FEATURES = [
@@ -18,7 +19,7 @@ const FEATURES = [
 ];
 
 export const IdleScreen: React.FC<IdleScreenProps> = ({
-  onStart, selectedLang, onLangChange, historyCount, onViewHistory, onAnalyzeReport,
+  onStart, selectedLang, onLangChange, historyCount, onViewHistory, onAnalyzeReport, onScanReport,
 }) => (
   <main className="screen" role="main"
     style={{ justifyContent: 'space-between', paddingTop: '44px', paddingBottom: '32px' }}>
@@ -119,15 +120,27 @@ export const IdleScreen: React.FC<IdleScreenProps> = ({
           Scan Prescription
         </button>
 
-        {onAnalyzeReport && (
+        {onScanReport && (
           <button
             className="btn-secondary"
-            onClick={onAnalyzeReport}
-            aria-label="Analyze a medical report from file"
+            onClick={onScanReport}
+            aria-label="Open camera to scan a medical report"
             style={{ fontSize: '21px', minHeight: '66px', borderRadius: '20px' }}
           >
-            <span aria-hidden style={{ fontSize: '26px' }}>📊</span>
-            Analyze Report
+            <span aria-hidden style={{ fontSize: '26px' }}>📷</span>
+            Scan Report
+          </button>
+        )}
+
+        {onAnalyzeReport && (
+          <button
+            className="btn-ghost"
+            onClick={onAnalyzeReport}
+            aria-label="Upload a medical report from file"
+            style={{ fontSize: '16px', minHeight: '54px', borderRadius: '20px' }}
+          >
+            <span aria-hidden style={{ fontSize: '22px' }}>📁</span>
+            Upload Report
           </button>
         )}
       </div>

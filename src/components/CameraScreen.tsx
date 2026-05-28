@@ -39,10 +39,10 @@ export const CameraScreen: React.FC<CameraScreenProps> = ({
   videoRef, canvasRef, onCapture, onBack, scanMode,
 }) => {
   const isPrescription = scanMode === 'prescription';
+  const isReport = scanMode === 'report';
   const [flash, setFlash] = useState(false);
 
   const handleCapture = () => {
-    // Trigger white-flash feedback before calling parent handler
     setFlash(true);
     setTimeout(() => setFlash(false), 260);
     onCapture();
@@ -54,7 +54,6 @@ export const CameraScreen: React.FC<CameraScreenProps> = ({
       role="region"
       aria-label="Camera viewfinder"
     >
-      {/* Live camera feed */}
       <video
         ref={videoRef}
         autoPlay
@@ -64,16 +63,13 @@ export const CameraScreen: React.FC<CameraScreenProps> = ({
         aria-label="Camera viewfinder"
       />
 
-      {/* Hidden capture canvas */}
       <canvas ref={canvasRef} style={{ display: 'none' }} aria-hidden />
 
-      {/* Gradient vignette — improves readability of UI over bright scenes */}
       <div aria-hidden style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
         background: 'linear-gradient(to bottom,rgba(0,0,0,.32) 0%,transparent 35%,transparent 65%,rgba(0,0,0,.55) 100%)',
       }} />
 
-      {/* Scan frame */}
       <div aria-hidden style={{
         position: 'absolute',
         top: '50%', left: '50%',
@@ -86,7 +82,6 @@ export const CameraScreen: React.FC<CameraScreenProps> = ({
         <ScanCorner top  right />
         <ScanCorner bottom left  />
         <ScanCorner bottom right />
-        {/* Animated scan line */}
         <div
           className="scan-line-anim"
           style={{
@@ -97,7 +92,6 @@ export const CameraScreen: React.FC<CameraScreenProps> = ({
         />
       </div>
 
-      {/* Scan hint text */}
       <div aria-live="polite" style={{
         position: 'absolute',
         top: '50%', left: '50%',
@@ -105,10 +99,9 @@ export const CameraScreen: React.FC<CameraScreenProps> = ({
         color: 'rgba(255,255,255,.8)', fontSize: '15px', textAlign: 'center',
         pointerEvents: 'none',
       }}>
-        {isPrescription ? 'Aim the prescription inside the frame' : 'Aim the label inside the frame'}
+        {isReport ? 'Aim the report inside the frame' : isPrescription ? 'Aim the prescription inside the frame' : 'Aim the label inside the frame'}
       </div>
 
-      {/* White flash on capture */}
       {flash && (
         <div
           aria-hidden
@@ -121,13 +114,11 @@ export const CameraScreen: React.FC<CameraScreenProps> = ({
         />
       )}
 
-      {/* Controls bar */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
         padding: '24px 32px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
-        {/* Back button */}
         <button
           onClick={onBack}
           aria-label="Cancel and go back"
@@ -139,10 +130,9 @@ export const CameraScreen: React.FC<CameraScreenProps> = ({
           }}
         >✕</button>
 
-        {/* Shutter button */}
         <button
           onClick={handleCapture}
-          aria-label={isPrescription ? 'Take photo of prescription' : 'Take photo of medicine label'}
+          aria-label={isReport ? 'Take photo of report' : isPrescription ? 'Take photo of prescription' : 'Take photo of medicine label'}
           style={{
             width: '84px', height: '84px', borderRadius: '50%',
             background: '#F4C430', border: '4px solid white',
@@ -155,7 +145,6 @@ export const CameraScreen: React.FC<CameraScreenProps> = ({
           onMouseUp={(e)   => (e.currentTarget.style.transform = 'scale(1)')}
         >📸</button>
 
-        {/* Spacer (keeps shutter centred) */}
         <div style={{ width: '56px' }} aria-hidden />
       </div>
     </div>

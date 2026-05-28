@@ -43,6 +43,9 @@ const App: React.FC = () => {
 
   const handleStart = useCallback(async (mode: ScanMode) => {
     setScanMode(mode);
+    if (mode === 'report') {
+      setAnalysisResult(null); setReportThumbnail(undefined); setUploadedFileName('');
+    }
     try { await camera.startStream(); setScreen('camera'); }
     catch { setErrorMsg('Camera access denied. Please allow camera permission.'); setScreen('error'); }
   }, [camera]);
@@ -53,8 +56,41 @@ const App: React.FC = () => {
     if (!b64) { setErrorMsg('Could not capture image. Please try again.'); setScreen('error'); return; }
 
     const thumb = b64.length > 60000 ? b64.slice(0, 60000) : b64;
-    setScreen('processing');
     tts.stop();
+
+    if (scanMode === 'report') {
+      setUploadedFileName('Scanned Report');
+      setScreen('reportProcessing' as Screen);
+      setReportThumbnail(thumb);
+
+      const key = await computeKey(b64, 'en');
+
+      if (reportCache.has(key)) {
+        setAnalysisResult(reportCache.get(key)!);
+        setScreen('reportAnalyzer' as Screen);
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/scan-report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: b64 }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) throw new Error(data.error ?? `Server error ${res.status}`);
+
+        reportCache.set(key, data);
+        setAnalysisResult(data);
+        setScreen('reportAnalyzer' as Screen);
+      } catch (err: unknown) {
+        setErrorMsg(err instanceof Error ? err.message : 'Failed to analyze report.');
+        setScreen('error');
+      }
+      return;
+    }
+
+    setScreen('processing');
 
     const key = await computeKey(b64, selectedLang.code);
 
@@ -134,6 +170,14 @@ const App: React.FC = () => {
     setScreen('reportUpload' as Screen);
   }, []);
 
+  const handleScanReport = useCallback(() => {
+    setAnalysisResult(null);
+    setReportThumbnail(undefined);
+    setUploadedFileName('');
+    setErrorMsg('');
+    handleStart('report');
+  }, [handleStart]);
+
   const handleReportUpload = useCallback(async (file: File) => {
     setUploadedFileName(file.name);
     setScreen('reportProcessing' as Screen);
@@ -185,7 +229,7 @@ const App: React.FC = () => {
 
   switch (screen) {
     case 'idle':
-      return <IdleScreen onStart={handleStart} selectedLang={selectedLang} onLangChange={setSelectedLang} historyCount={history.length} onViewHistory={handleViewHistory} onAnalyzeReport={handleOpenReportAnalyzer} />;
+      return <IdleScreen onStart={handleStart} selectedLang={selectedLang} onLangChange={setSelectedLang} historyCount={history.length} onViewHistory={handleViewHistory} onAnalyzeReport={handleOpenReportAnalyzer} onScanReport={handleScanReport} />;
     case 'camera':
       return <CameraScreen videoRef={camera.videoRef} canvasRef={camera.canvasRef} onCapture={handleCapture} onBack={handleCameraBack} scanMode={scanMode} />;
     case 'processing':
@@ -200,12 +244,15 @@ const App: React.FC = () => {
         />
       ) : null;
     case 'reportUpload':
-      return <ReportUploadScreen onUpload={handleReportUpload} onCancel={handleReportHome} />;
+      return <ReportUploadScreen onUpload={handleReportUpload} onCancel={handleReportHome} onScanReport={handleScanReport} />;
     case 'reportProcessing':
       return <ReportProcessingScreen fileName={uploadedFileName} />;
     case 'reportAnalyzer':
       return analysisResult ? (
-        <ReportAnalyzer result={analysisResult} onHome={handleReportHome} thumbnail={reportThumbnail} />
+        <ReportAnalyzer result={analysisResult} onHome={handleReportHome} thumbnail={reportThumbnail}
+          onSpeak={tts.speak} onStop={tts.stop} isSpeaking={tts.isSpeaking}
+          isLoadingBhashini={tts.isLoadingBhashini} selectedLang={selectedLang}
+        />
       ) : null;
     case 'error':
       return <ErrorScreen message={errorMsg} onRetry={handleRescan} onHome={handleHome} />;
