@@ -154,8 +154,11 @@ module.exports = async function handler(req, res) {
 };
 
 async function translateWithBhashini(result, targetLang, apiKey, userId) {
-  const texts = [result.summary].concat(result.keyMetrics.map(function(m) { return m.name; })).concat(result.nextSteps);
-  const fieldCount = 1 + result.keyMetrics.length + result.nextSteps.length;
+  // BUG FIX: Include metric VALUES in translation (previously only names were translated)
+  // Order: [summary, ...metric names, ...metric values, ...nextSteps]
+  const metricNames  = result.keyMetrics.map(function(m) { return m.name; });
+  const metricValues = result.keyMetrics.map(function(m) { return m.value; });
+  const texts = [result.summary].concat(metricNames).concat(metricValues).concat(result.nextSteps);
 
   const pipelineRes = await fetch('https://meity-auth.ulcacontrib.org/ulca/apis/v0/model/getModelsPipeline', {
     method: 'POST',
@@ -187,28 +190,43 @@ async function translateWithBhashini(result, targetLang, apiKey, userId) {
   const td = await trRes.json();
   const outputs = td.pipelineResponse[0].output;
   const translated = Object.assign({}, result);
+
+  // Index 0 = summary
   translated.summary = (outputs[0] && outputs[0].target) || result.summary;
-  result.keyMetrics.forEach(function(m, i) {
-    const translatedName = (outputs[1 + i] && outputs[1 + i].target) || m.name;
-    translated.keyMetrics[i] = Object.assign({}, m, { name: translatedName });
+
+  const nameOffset  = 1;
+  const valueOffset = 1 + result.keyMetrics.length;
+  const stepsOffset = 1 + result.keyMetrics.length + result.keyMetrics.length;
+
+  // BUG FIX: rebuild keyMetrics with BOTH translated name AND value
+  translated.keyMetrics = result.keyMetrics.map(function(m, i) {
+    const translatedName  = (outputs[nameOffset  + i] && outputs[nameOffset  + i].target) || m.name;
+    const translatedValue = (outputs[valueOffset + i] && outputs[valueOffset + i].target) || m.value;
+    return Object.assign({}, m, { name: translatedName, value: translatedValue });
   });
-  const metricCount = result.keyMetrics.length;
-  result.nextSteps.forEach(function(s, i) {
-    const translatedStep = (outputs[1 + metricCount + i] && outputs[1 + metricCount + i].target) || s;
-    translated.nextSteps[i] = translatedStep;
+
+  translated.nextSteps = result.nextSteps.map(function(s, i) {
+    return (outputs[stepsOffset + i] && outputs[stepsOffset + i].target) || s;
   });
+
   return translated;
 }
 
 async function translateWithGroq(result, targetLang, groqKey) {
   const langNames = { hi:'Hindi', bn:'Bengali', ta:'Tamil', te:'Telugu', mr:'Marathi', gu:'Gujarati', kn:'Kannada', ml:'Malayalam', pa:'Punjabi', or:'Odia', ur:'Urdu' };
   const langName = langNames[targetLang] || targetLang;
+
+  // BUG FIX: Do NOT include "status" field in translation payload.
+  // status values ("normal"/"high"/"low") are used as keys for UI color-coding
+  // and must stay in English. Previously sending them caused Groq to translate
+  // them (e.g. "normal" → Hindi word), breaking the color system.
+  // BUG FIX: Include metric "value" in translation (was missing before).
   const payload = {
     summary: result.summary,
-    metrics: result.keyMetrics.map(function(m) { return { name: m.name, value: m.value, status: m.status }; }),
+    metrics: result.keyMetrics.map(function(m) { return { name: m.name, value: m.value }; }),
     recommendations: result.nextSteps
   };
-  const prompt = 'Translate all JSON string values to ' + langName + '. Return ONLY raw JSON, same structure, no markdown, no backticks.\nInput: ' + JSON.stringify(payload);
+  const prompt = 'Translate all text values to ' + langName + '. Keep numeric values and units (like "14.2 g/dL") as-is, only translate the words. Return ONLY raw JSON, same structure, no markdown, no backticks.\nInput: ' + JSON.stringify(payload);
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -226,9 +244,13 @@ async function translateWithGroq(result, targetLang, groqKey) {
   const translated = Object.assign({}, result);
   if (t.summary) translated.summary = t.summary;
   if (Array.isArray(t.metrics)) {
+    // BUG FIX: copy back BOTH translated name AND value (previously only name was copied)
     translated.keyMetrics = result.keyMetrics.map(function(m, i) {
       const tm = t.metrics[i] || {};
-      return Object.assign({}, m, { name: tm.name || m.name });
+      return Object.assign({}, m, {
+        name:  tm.name  || m.name,
+        value: tm.value || m.value   // <-- THIS WAS THE MISSING LINE
+      });
     });
   }
   if (Array.isArray(t.recommendations)) {
