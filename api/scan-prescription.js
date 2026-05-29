@@ -247,7 +247,8 @@ module.exports = async function handler(req, res) {
 
 async function translateWithBhashini(result, targetLang, apiKey, userId) {
   const fields = ['patientName', 'diagnosis', 'notes'];
-  const texts  = fields.map(function(f) { return result[f]; });
+  const medicineTexts = result.medicines.flatMap(m => [m.name, m.dosage, m.frequency, m.duration]);
+  const allTexts = [...fields.map(function(f) { return result[f]; }), ...medicineTexts];
 
   const pipelineRes = await fetch('https://meity-auth.ulcacontrib.org/ulca/apis/v0/model/getModelsPipeline', {
     method: 'POST',
@@ -270,9 +271,9 @@ async function translateWithBhashini(result, targetLang, apiKey, userId) {
       pipelineTasks: [{
         taskType: 'translation',
         config: { language: { sourceLanguage: 'en', targetLanguage: targetLang }, serviceId: serviceId },
-        input: texts.map(function(t) { return { source: t }; })
+        input: allTexts.map(function(t) { return { source: t }; })
       }],
-      inputData: { input: texts.map(function(t) { return { source: t }; }) }
+      inputData: { input: allTexts.map(function(t) { return { source: t }; }) }
     })
   });
 
@@ -280,18 +281,28 @@ async function translateWithBhashini(result, targetLang, apiKey, userId) {
   const outputs = td.pipelineResponse[0].output;
   const translated = Object.assign({}, result);
   fields.forEach(function(f, i) { translated[f] = (outputs[i] && outputs[i].target) || result[f]; });
+  
+  translated.medicines = result.medicines.map(function(med, i) {
+    return {
+      name: (outputs[fields.length + i*4] && outputs[fields.length + i*4].target) || med.name,
+      dosage: (outputs[fields.length + i*4+1] && outputs[fields.length + i*4+1].target) || med.dosage,
+      frequency: (outputs[fields.length + i*4+2] && outputs[fields.length + i*4+2].target) || med.frequency,
+      duration: (outputs[fields.length + i*4+3] && outputs[fields.length + i*4+3].target) || med.duration,
+    };
+  });
   return translated;
 }
 
 async function translateWithGroq(result, targetLang, groqKey) {
   const langNames = { hi:'Hindi', bn:'Bengali', ta:'Tamil', te:'Telugu', mr:'Marathi', gu:'Gujarati', kn:'Kannada', ml:'Malayalam', pa:'Punjabi', or:'Odia', ur:'Urdu' };
   const langName = langNames[targetLang] || targetLang;
-  const prompt = 'Translate all JSON string values to ' + langName + '. Return ONLY raw JSON, same keys, no markdown, no backticks.\nInput: ' + JSON.stringify({ patientName: result.patientName, diagnosis: result.diagnosis, notes: result.notes });
+  const medicinesInput = result.medicines.map(function(m) { return { name: m.name, dosage: m.dosage, frequency: m.frequency, duration: m.duration }; });
+  const prompt = 'Translate all JSON string values to ' + langName + '. Return ONLY raw JSON, same keys, no markdown, no backticks.\nInput: ' + JSON.stringify({ patientName: result.patientName, diagnosis: result.diagnosis, notes: result.notes, medicines: medicinesInput });
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + groqKey },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 600, temperature: 0.1, messages: [{ role: 'user', content: prompt }] })
+    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 1200, temperature: 0.1, messages: [{ role: 'user', content: prompt }] })
   });
 
   const data = await res.json();
@@ -304,5 +315,11 @@ async function translateWithGroq(result, targetLang, groqKey) {
     patientName: t.patientName || result.patientName,
     diagnosis: t.diagnosis || result.diagnosis,
     notes: t.notes || result.notes,
+    medicines: (t.medicines || []).map(function(m, i) { return {
+      name: m.name || result.medicines[i].name,
+      dosage: m.dosage || result.medicines[i].dosage,
+      frequency: m.frequency || result.medicines[i].frequency,
+      duration: m.duration || result.medicines[i].duration,
+    }; })
   });
 }
