@@ -216,12 +216,13 @@ const App: React.FC = () => {
   }, [selectedLang]);
 
   const handleReportHome = useCallback(() => {
+    tts.stop(); // stop any playing audio before navigating away
     setAnalysisResult(null);
     setReportThumbnail(undefined);
     setUploadedFileName('');
     setErrorMsg('');
     setScreen('idle');
-  }, []);
+  }, [tts]);
 
   if (screen === ('history' as Screen)) {
     return <HistoryScreen history={history} onSelect={handleSelectHistory} onBack={() => setScreen('idle')} onClear={handleClearHistory} />;

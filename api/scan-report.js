@@ -231,7 +231,7 @@ async function translateWithGroq(result, targetLang, groqKey) {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + groqKey },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 1200, temperature: 0.1, messages: [{ role: 'user', content: prompt }] })
+    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 3000, temperature: 0.1, messages: [{ role: 'user', content: prompt }] })
   });
 
   const data = await res.json();
@@ -239,7 +239,12 @@ async function translateWithGroq(result, targetLang, groqKey) {
   if (!raw) throw new Error('Empty translation');
   const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
   const match = cleaned.match(/\{[\s\S]*\}/);
-  const t = JSON.parse(match ? match[0] : cleaned);
+  let t;
+  try {
+    t = JSON.parse(match ? match[0] : cleaned);
+  } catch (e) {
+    throw new Error('Translation JSON parse failed (likely truncated). Raw length: ' + cleaned.length);
+  }
 
   const translated = Object.assign({}, result);
   if (t.summary) translated.summary = t.summary;
