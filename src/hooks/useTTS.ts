@@ -6,6 +6,11 @@
  *   1. Call /api/tts?text=...&lang=hi  (Google TTS proxy — works on all devices)
  *   2. Play returned MP3 audio via HTMLAudioElement
  *   3. Fallback to Web Speech API if proxy fails
+ *
+ * Bug fixes:
+ *   - Fixed stale closure in setTimeout fallback (was always reading isLoading=false)
+ *   - Use isLoadingRef (useRef) to reliably track loading state inside callbacks
+ *   - Improved error handling for long-text TTS URLs
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -27,10 +32,22 @@ interface UseTTSReturn {
 export function useTTS(): UseTTSReturn {
   const [isSpeaking,  setIsSpeaking]  = useState(false);
   const [isLoading,   setIsLoading]   = useState(false);
+  // Ref mirrors isLoading state — readable inside stale closures (setTimeout, event handlers)
+  const isLoadingRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const supported = typeof window !== 'undefined' && 'speechSynthesis' in window;
 
+  const setLoadingState = (val: boolean) => {
+    isLoadingRef.current = val;
+    setIsLoading(val);
+  };
+
   const stop = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
@@ -38,38 +55,44 @@ export function useTTS(): UseTTSReturn {
     }
     if (supported) window.speechSynthesis.cancel();
     setIsSpeaking(false);
-    setIsLoading(false);
+    setLoadingState(false);
   }, [supported]);
 
   const speak = useCallback((text: string, lang = 'en') => {
     stop();
 
-    // For English use Web Speech directly (faster)
+    // For English use Web Speech directly (faster, no proxy needed)
     if (lang === 'en') {
       speakWebSpeech(text, 'en-US', setIsSpeaking);
       return;
     }
 
     // For all Indian languages — use Google TTS proxy
-    setIsLoading(true);
+    setLoadingState(true);
 
-    // Build URL for GET request to our proxy
-    const params = new URLSearchParams({ text, lang });
+    // Truncate text to avoid excessively long URLs (proxy handles chunking internally)
+    const safeText = text.length > 500 ? text.slice(0, 500) : text;
+    const params = new URLSearchParams({ text: safeText, lang });
     const audioUrl = `/api/tts?${params.toString()}`;
 
     const audio = new Audio(audioUrl);
     audioRef.current = audio;
 
-    const timeout = setTimeout(() => {
-      if (isLoading) {
+    // Fallback to Web Speech if proxy hasn't responded in 8 seconds.
+    // FIX: use isLoadingRef.current (not stale isLoading state) inside the closure.
+    timeoutRef.current = setTimeout(() => {
+      if (isLoadingRef.current) {
         stop();
         speakWebSpeechFallback(text, lang, setIsSpeaking);
       }
     }, 8000);
 
     audio.oncanplaythrough = () => {
-      clearTimeout(timeout);
-      setIsLoading(false);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      setLoadingState(false);
       setIsSpeaking(true);
       audio.play().catch(() => {
         setIsSpeaking(false);
@@ -80,8 +103,11 @@ export function useTTS(): UseTTSReturn {
     audio.onended = () => setIsSpeaking(false);
 
     audio.onerror = () => {
-      clearTimeout(timeout);
-      setIsLoading(false);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      setLoadingState(false);
       setIsSpeaking(false);
       speakWebSpeechFallback(text, lang, setIsSpeaking);
     };

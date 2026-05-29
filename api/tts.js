@@ -65,19 +65,33 @@ module.exports = async function handler(req, res) {
 };
 
 // Split text at sentence boundaries to stay under 200 char limit
+// Avoids lookbehind assertions for broader Node.js compatibility
 function splitText(text, maxLen) {
   if (text.length <= maxLen) return [text];
   const chunks = [];
-  const sentences = text.split(/(?<=[।.!?])\s+/);
+  // Split on sentence-ending punctuation (Hindi danda, period, ! or ?)
+  const sentences = text.split(/([।.!?])\s+/);
   let current = '';
-  for (const s of sentences) {
-    if ((current + ' ' + s).trim().length > maxLen) {
-      if (current) chunks.push(current.trim());
-      current = s;
+  for (let i = 0; i < sentences.length; i++) {
+    const part = sentences[i];
+    const combined = current ? current + ' ' + part : part;
+    if (combined.trim().length > maxLen) {
+      if (current.trim()) chunks.push(current.trim());
+      // If a single sentence is longer than maxLen, hard-split it
+      if (part.trim().length > maxLen) {
+        let remaining = part.trim();
+        while (remaining.length > maxLen) {
+          chunks.push(remaining.slice(0, maxLen));
+          remaining = remaining.slice(maxLen);
+        }
+        current = remaining;
+      } else {
+        current = part;
+      }
     } else {
-      current = (current + ' ' + s).trim();
+      current = combined.trim();
     }
   }
-  if (current) chunks.push(current.trim());
+  if (current.trim()) chunks.push(current.trim());
   return chunks.length ? chunks : [text.slice(0, maxLen)];
 }

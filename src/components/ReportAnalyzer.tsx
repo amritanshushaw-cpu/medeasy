@@ -13,15 +13,17 @@ interface ReportAnalyzerProps {
 }
 
 function buildReportSpeechText(result: AnalysisResult): string {
+  // Use only the translated result content without hardcoded English labels,
+  // so non-English TTS reads naturally in the target language.
   const parts: string[] = [];
-  if (result.summary) parts.push(`Summary: ${result.summary}`);
+  if (result.summary) parts.push(result.summary);
   if (result.keyMetrics.length > 0) {
-    const metricsText = result.keyMetrics.map(m => `${m.name}: ${m.value}, status: ${m.status}`).join('. ');
-    parts.push(`Key metrics: ${metricsText}`);
+    const metricsText = result.keyMetrics.map(m => `${m.name}: ${m.value}`).join('. ');
+    parts.push(metricsText);
   }
   if (result.nextSteps.length > 0) {
-    const steps = result.nextSteps.map((s, i) => `${i + 1}: ${s}`).join('. ');
-    parts.push(`Recommended actions: ${steps}`);
+    const steps = result.nextSteps.join('. ');
+    parts.push(steps);
   }
   return parts.join('. ');
 }
@@ -36,8 +38,9 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
   useEffect(() => {
     const t = setTimeout(() => onSpeak(speechText, selectedLang.code), 900);
     return () => clearTimeout(t);
+  // Re-speak when language or result changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedLang.code]);
 
   const toast = (msg: string) => {
     setToastMsg(msg); setShowToast(true);
