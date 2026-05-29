@@ -4,9 +4,10 @@ import { ScanMode } from '../types';
 interface ProcessingScreenProps {
   language?: string;
   scanMode?: ScanMode;
+  onCancel?: () => void;
 }
 
-export const ProcessingScreen: React.FC<ProcessingScreenProps> = ({ language, scanMode }) => {
+export const ProcessingScreen: React.FC<ProcessingScreenProps> = ({ language, scanMode, onCancel }) => {
   const isPrescription = scanMode === 'prescription';
   const isReport = scanMode === 'report';
   const steps = isReport
@@ -75,6 +76,38 @@ export const ProcessingScreen: React.FC<ProcessingScreenProps> = ({ language, sc
             </div>
           ))}
         </div>
+
+        {onCancel && (
+          <div style={{ marginTop: '28px' }}>
+            <button
+              onClick={onCancel}
+              className="slide-up"
+              aria-label="Cancel processing"
+              style={{
+                animationDelay: '0.8s',
+                padding: '12px 24px',
+                borderRadius: '12px',
+                background: 'rgba(248,113,113,.1)',
+                border: '1.5px solid rgba(248,113,113,.3)',
+                color: '#F87171',
+                fontSize: '15px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(248,113,113,.15)';
+                e.currentTarget.style.borderColor = 'rgba(248,113,113,.5)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(248,113,113,.1)';
+                e.currentTarget.style.borderColor = 'rgba(248,113,113,.3)';
+              }}
+            >
+              ← Back
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

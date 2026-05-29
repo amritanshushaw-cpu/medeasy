@@ -137,6 +137,23 @@ const App: React.FC = () => {
 
   const handleCameraBack = useCallback(() => { camera.stopStream(); setScreen('idle'); }, [camera]);
 
+  const handleCancelProcessing = useCallback(() => {
+    tts.stop();
+    setResult(null);
+    setThumbnail(undefined);
+    setErrorMsg('');
+    setScreen('idle');
+  }, [tts]);
+
+  const handleCancelReportProcessing = useCallback(() => {
+    tts.stop();
+    setAnalysisResult(null);
+    setReportThumbnail(undefined);
+    setUploadedFileName('');
+    setErrorMsg('');
+    setScreen('idle');
+  }, [tts]);
+
   const handleRescan = useCallback(async () => {
     tts.stop(); setResult(null); setErrorMsg(''); setThumbnail(undefined);
     try { await camera.startStream(); setScreen('camera'); }
@@ -234,7 +251,7 @@ const App: React.FC = () => {
     case 'camera':
       return <CameraScreen videoRef={camera.videoRef} canvasRef={camera.canvasRef} onCapture={handleCapture} onBack={handleCameraBack} scanMode={scanMode} />;
     case 'processing':
-      return <ProcessingScreen language={selectedLang.code} scanMode={scanMode} />;
+      return <ProcessingScreen language={selectedLang.code} scanMode={scanMode} onCancel={handleCancelProcessing} />;
     case 'results':
       return result ? (
         <ResultsScreen
@@ -247,7 +264,7 @@ const App: React.FC = () => {
     case 'reportUpload':
       return <ReportUploadScreen onUpload={handleReportUpload} onCancel={handleReportHome} onScanReport={handleScanReport} />;
     case 'reportProcessing':
-      return <ReportProcessingScreen fileName={uploadedFileName} />;
+      return <ReportProcessingScreen fileName={uploadedFileName} onCancel={handleCancelReportProcessing} />;
     case 'reportAnalyzer':
       return analysisResult ? (
         <ReportAnalyzer result={analysisResult} onHome={handleReportHome} thumbnail={reportThumbnail}

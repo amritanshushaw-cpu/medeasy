@@ -32,10 +32,13 @@ interface UseTTSReturn {
 export function useTTS(): UseTTSReturn {
   const [isSpeaking,  setIsSpeaking]  = useState(false);
   const [isLoading,   setIsLoading]   = useState(false);
+  const [isPaused,    setIsPaused]    = useState(false);
   // Ref mirrors isLoading state — readable inside stale closures (setTimeout, event handlers)
   const isLoadingRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentTextRef = useRef<string>('');
+  const currentLangRef = useRef<string>('en');
   const supported = typeof window !== 'undefined' && 'speechSynthesis' in window;
 
   const setLoadingState = (val: boolean) => {
@@ -43,7 +46,8 @@ export function useTTS(): UseTTSReturn {
     setIsLoading(val);
   };
 
-  const stop = useCallback(() => {
+  // Full stop with reset — used when starting new text or cleaning up
+  const fullStop = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
@@ -55,11 +59,58 @@ export function useTTS(): UseTTSReturn {
     }
     if (supported) window.speechSynthesis.cancel();
     setIsSpeaking(false);
+    setIsPaused(false);
     setLoadingState(false);
   }, [supported]);
 
+  // Pause current playback (preserve position for resume)
+  const pause = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    if (supported) window.speechSynthesis.pause?.();
+    setIsSpeaking(false);
+    setIsPaused(true);
+  }, [supported]);
+
+  // Resume from pause
+  const resume = useCallback(() => {
+    if (audioRef.current && isPaused) {
+      audioRef.current.play().catch(() => {
+        setIsSpeaking(false);
+        speakWebSpeechFallback(currentTextRef.current, currentLangRef.current, setIsSpeaking);
+      });
+      setIsSpeaking(true);
+      setIsPaused(false);
+    } else if (supported && isPaused) {
+      window.speechSynthesis.resume?.();
+      setIsSpeaking(true);
+      setIsPaused(false);
+    }
+  }, [supported, isPaused]);
+
+  // Exposed stop function - toggles between pause/resume
+  const stop = useCallback(() => {
+    if (isSpeaking) {
+      pause();
+    } else if (isPaused) {
+      resume();
+    } else {
+      fullStop();
+    }
+  }, [isSpeaking, isPaused, pause, resume, fullStop]);
+
   const speak = useCallback((text: string, lang = 'en') => {
-    stop();
+    // If same text is paused, just resume
+    if (isPaused && text === currentTextRef.current && lang === currentLangRef.current) {
+      resume();
+      return;
+    }
+
+    // Different text - do full stop first
+    fullStop();
+    currentTextRef.current = text;
+    currentLangRef.current = lang;
 
     // For English use Web Speech directly (faster, no proxy needed)
     if (lang === 'en') {
@@ -82,7 +133,7 @@ export function useTTS(): UseTTSReturn {
     // FIX: use isLoadingRef.current (not stale isLoading state) inside the closure.
     timeoutRef.current = setTimeout(() => {
       if (isLoadingRef.current) {
-        stop();
+        fullStop();
         speakWebSpeechFallback(text, lang, setIsSpeaking);
       }
     }, 8000);
@@ -94,13 +145,17 @@ export function useTTS(): UseTTSReturn {
       }
       setLoadingState(false);
       setIsSpeaking(true);
+      setIsPaused(false);
       audio.play().catch(() => {
         setIsSpeaking(false);
         speakWebSpeechFallback(text, lang, setIsSpeaking);
       });
     };
 
-    audio.onended = () => setIsSpeaking(false);
+    audio.onended = () => {
+      setIsSpeaking(false);
+      setIsPaused(false);
+    };
 
     audio.onerror = () => {
       if (timeoutRef.current) {
@@ -115,9 +170,9 @@ export function useTTS(): UseTTSReturn {
     audio.load();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stop]);
+  }, [fullStop, isPaused, resume]);
 
-  useEffect(() => () => { stop(); }, [stop]);
+  useEffect(() => () => { fullStop(); }, [fullStop]);
 
   return {
     isSpeaking,
